@@ -1,7 +1,7 @@
 /*
 ** DSMRinjector
 */
-#define _FW_VERSION "v3 (31-07-2019)"
+#define _FW_VERSION "v4 (06-03-2020)"
 /* 
 *   Arduino-IDE settings for ESP01 (black):
 
@@ -23,49 +23,7 @@
 
 */
 
-#include "CRC16.h"
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <TimeLib.h>  // https://github.com/PaulStoffregen/Time
-#include <TelnetStream.h>
-#include <ESP8266mDNS.h>
-#include <WebSocketsServer.h>   // Version 20.05.2015 - https://github.com/Links2004/arduinoWebSockets
-#include "macros.h"
-#include "index_html.h"
-
-#define MAXLINELENGTH 128 // longest normal line is 47 char (+3 for \r\n\0)
-#define _SSID         "YOUR_SSID"       // WiFi SSID
-#define _PASSWORD     "YOUR_WIFI_PASSWORD"      // WiFi PASSWORD
-#define _HOSTNAME     "DSMRinjector"
-
-ESP8266WebServer        httpServer (80);
-ESP8266HTTPUpdateServer httpUpdater(true);
-WebSocketsServer webSocket = WebSocketsServer(81);
-
-enum { SInit, SMonth, SDay, SHour, SNormal };
-
-uint8_t runMode   = 0;
-uint8_t runStatus = 0;
-
-char telegram[MAXLINELENGTH];
-
-
-uint16_t    currentCRC; 
-int16_t     calcCRC;
-const bool  outputOnSerial = true;
-uint32_t    nextTelegram = 0, actInterval = 5, nextMinute = 0, nextESPcheck = 0, nextGuiUpdate;
-uint32_t    telegramCount = 0;
-int8_t      State;
-int16_t     actSec, actMinute, actHour, actDay, actMonth, actYear, actSpeed;
-char        actDSMR[3], savDSMR[3];
-double      ED_T1=0, ED_T2=0, ER_T1=0, ER_T2=0, V_l1=0, V_l2=0, V_l3=0, C_l1=0, C_l2=0, C_l3=0;
-uint8_t     ETariffInd=1;
-float       PDelivered, PReceived;
-float       IPD_l1, IPD_l2, IPD_l3, IPR_l1, IPR_l2, IPR_l3;
-float       GDelivered;
-bool        Verbose = false;
-char        cTimeStamp[25];
+#include "DSMRinjector.h"
 
 //===========================================================================================
 void callIndex_html() {
@@ -88,10 +46,10 @@ void handleReBoot() {
   redirectHTML += "<style type='text/css'>";
   redirectHTML += "body {background-color: lightblue;}";
   redirectHTML += "</style>";
-  redirectHTML += "<title>Redirect to DSMR-injector</title>";
+  redirectHTML += "<title>Redirect to DSMRinjector</title>";
   redirectHTML += "</head>";
-  redirectHTML += "<body><h1>DSMR-injector</h1>";
-  redirectHTML += "<h3>Rebooting DSMR-injector</h3>";
+  redirectHTML += "<body><h1>DSMRinjector</h1>";
+  redirectHTML += "<h3>Rebooting DSMRinjector</h3>";
   redirectHTML += "<br><div style='width: 500px; position: relative; font-size: 25px;'>";
   redirectHTML += "  <div style='float: left;'>Redirect over &nbsp;</div>";
   redirectHTML += "  <div style='float: left;' id='counter'>20</div>";
@@ -99,7 +57,7 @@ void handleReBoot() {
   redirectHTML += "  <div style='float: right;'>&nbsp;</div>";
   redirectHTML += "</div>";
   redirectHTML += "<!-- Note: don't tell people to `click` the link, just tell them that it is a link. -->";
-  redirectHTML += "<br><br><hr>If you are not redirected automatically, click this <a href='/'>DSMR-logger</a>.";
+  redirectHTML += "<br><br><hr>If you are not redirected automatically, click this <a href='/'>DSMRinjector</a>.";
   redirectHTML += "  <script>";
   redirectHTML += "      setInterval(function() {";
   redirectHTML += "          var div = document.querySelector('#counter');";
@@ -114,7 +72,7 @@ void handleReBoot() {
   
   httpServer.send(200, "text/html", redirectHTML);
   
-  Debugln("ReBoot DSMR-logger ..");
+  Debugln("ReBoot DSMRinjector ..");
   TelnetStream.flush();
   delay(1000);
   ESP.reset();
@@ -148,16 +106,14 @@ int8_t splitString(String inStrng, char delimiter, String wOut[], uint8_t maxWor
       inxE  = inStrng.indexOf(delimiter, inxS);         //finds location of first ,
       wOut[wordCount] = inStrng.substring(inxS, inxE);  //captures first data String
       wOut[wordCount].trim();
-      _dThis = true;
-      //Debugf("[%d] => [%c] @[%d] found[%s]\n", wordCount, delimiter, inxE, wOut[wordCount].c_str());
+      //DebugTf("[%d] => [%c] @[%d] found[%s]\n", wordCount, delimiter, inxE, wOut[wordCount].c_str());
       inxS = inxE;
       inxS++;
       wordCount++;
     }
     if (inxS < inStrng.length()) {
       wOut[wordCount] = inStrng.substring(inxS, inStrng.length());  //captures first data String      
-      _dThis = true;
-      //Debugf("[%d] rest => [%s]\n", wordCount, wOut[wordCount].c_str());
+      //DebugTf("[%d] rest => [%s]\n", wordCount, wOut[wordCount].c_str());
     }
 
     return wordCount;
@@ -170,8 +126,8 @@ void checkESP8266() {
 //==================================================================================================
 
   uint32_t    realSize = ESP.getFlashChipRealSize();
-  uint32_t    ideSize = ESP.getFlashChipSize();
-  FlashMode_t ideMode = ESP.getFlashChipMode();
+  uint32_t    ideSize  = ESP.getFlashChipSize();
+  FlashMode_t ideMode  = ESP.getFlashChipMode();
 
   Debugln("\n=============================================================");
 
@@ -230,254 +186,6 @@ String Format(double x, int len, int d) {
   return r;
 
 } // Format()
-
-
-//==================================================================================================
-int16_t buildTelegram40(int16_t line, char telegram[]) {
-//==================================================================================================
-  int16_t len = 0;
-
-  float val;
-
-  switch (line) {
-                                //XMX5LGBBLB2410065887
-  	case 0:   sprintf(telegram, "/XMX5LGBBLB2410065887\r\n");
-						  break;
-  	case 1:   sprintf(telegram, "\r\n");		
-  	          break;
-  	case 2:   sprintf(telegram, "1-3:0.2.8(50)\r\n");
-						  break;
-  	case 3:   sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02dS)\r\n", (year() - 2000), month(), day(), hour(), minute(), second());
-						  break;
-  	case 4:   sprintf(telegram, "0-0:96.1.1(4530303336303000000000000000000040)\r\n", val);
-		          break;
-    case 5:   // Energy Delivered
-  	          sprintf(telegram, "1-0:1.8.1(%s*kWh)\r\n", Format(ED_T1, 10, 3).c_str());
-		          break;
-    case 6:   sprintf(telegram, "1-0:1.8.2(%s*kWh)\r\n", Format(ED_T2, 10, 3).c_str());
-		          break;
-    case 7:   // Energy Returned
-              sprintf(telegram, "1-0:2.8.1(%s*kWh)\r\n", Format(ER_T1, 10, 3).c_str());
-		          break;
-    case 8:   sprintf(telegram, "1-0:2.8.2(%s*kWh)\r\n", Format(ER_T2, 10, 3).c_str());
-		          break;
-    case 9:   // Tariff indicator electricity
-  	          sprintf(telegram, "0-0:96.14.0(%04d)\r\n", ETariffInd);
-		          break;
-    case 10:  // Actual electricity power delivered (+P) in 1 Watt resolution
-  	          sprintf(telegram, "1-0:1.7.0(%s*kW)\r\n", Format(PDelivered, 6, 2).c_str());
-		          break;
-    case 11:  // Actual electricity power received (-P) in 1 Watt resolution
-  	          sprintf(telegram, "1-0:2.7.0(%s*kW)\r\n", Format(PReceived, 6, 2).c_str());
-		          break;
-    case 12:  // Number of power failures in any phase
-  	          sprintf(telegram, "0-0:96.7.21(00010)\r\n", val);
-		          break;
-    case 13:  // Number of long power failures in any phase
-  	          sprintf(telegram, "0-0:96.7.9(00000)\r\n", val);
-		          break;
-    case 14:  // Power Failure Event Log (long power failures)
-  	          sprintf(telegram, "1-0:99.97.0(0)(0-0:96.7.19)\r\n", val);
-		          break;
-    case 15:  // Number of voltage sags in phase L1
-  	          sprintf(telegram, "1-0:32.32.0(00002)\r\n", val);
-		          break;
-    case 16:  // Number of voltage sags in phase L2 (polyphase meters only)
-  	          sprintf(telegram, "1-0:52.32.0(00003)\r\n", val);
-		          break;
-    case 17:  // Number of voltage sags in phase L3 (polyphase meters only)
-  	          sprintf(telegram, "1-0:72.32.0(00003)\r\n", val);
-		          break;
-    case 18:  // Number of voltage swells in phase L1
-  	          sprintf(telegram, "1-0:32.36.0(00000)\r\n", val);
-		          break;
-    case 19:  // Number of voltage swells in phase L2
-  	          sprintf(telegram, "1-0:52.36.0(00000)\r\n", val);
-		          break;
-    case 20:  // Number of voltage swells in phase L3
-  	          sprintf(telegram, "1-0:72.36.0(00000)\r\n", val);
-		          break;
-    case 21:  // Text message max 2048 characters
-  	          sprintf(telegram, "0-0:96.13.0()\r\n", val);
-		          break;
-    case 22:  // Instantaneous voltage L1 in 0.1V resolution
-  	          sprintf(telegram, "1-0:32.7.0(%03d.0*V)\r\n", (240 + random(-3,3)));
-		          break;
-    case 23:  // Instantaneous voltage L1 in 0.1V resolution
-  	          sprintf(telegram, "1-0:52.7.0(%03d.0*V)\r\n", (238 + random(-3,3)));
-		          break;
-    case 24:  // Instantaneous voltage L1 in 0.1V resolution
-  	          sprintf(telegram, "1-0:72.7.0(%03d.0*V)\r\n", (236 + random(-3,3)));
-		          break;
-    case 25:  // Instantaneous current L1 in A resolution
-  	          sprintf(telegram, "1-0:31.7.0(%03d*A)\r\n", random(0,4));
-		          break;
-    case 26:  // Instantaneous current L2 in A resolution
-  	          sprintf(telegram, "1-0:51.7.0(%03d*A)\r\n",  random(0,4));
-		          break;
-    case 27:  // Instantaneous current L3 in A resolution
-  	          sprintf(telegram, "1-0:71.7.0(000*A)\r\n", val);
-		          break;
-    case 28:  // Instantaneous active power L1 (+P) in W resolution
-  	          sprintf(telegram, "1-0:21.7.0(%s*kW)\r\n", Format(IPD_l1, 6, 3).c_str());
-		          break;
-    case 29:  // Instantaneous active power L2 (+P) in W resolution
-  	          sprintf(telegram, "1-0:41.7.0(%s*kW)\r\n", Format(IPD_l2, 6, 3).c_str());
-		          break;
-    case 30:  // Instantaneous active power L3 (+P) in W resolution
-  	          sprintf(telegram, "1-0:61.7.0(%s*kW)\r\n", Format(IPD_l3, 6, 3).c_str());
-		          break;
-    case 31:  // Instantaneous active power L1 (-P) in W resolution
-  	          sprintf(telegram, "1-0:22.7.0(%s*kW)\r\n", Format(IPR_l1, 6, 3).c_str());
-		          break;
-    case 32:  // Instantaneous active power L2 (-P) in W resolution
-  	          sprintf(telegram, "1-0:42.7.0(%s*kW)\r\n", Format(IPR_l2, 6, 3).c_str());
-		          break;
-    case 33:  // Instantaneous active power L3 (-P) in W resolution
-  	          sprintf(telegram, "1-0:62.7.0(%s*kW)\r\n", Format(IPR_l3, 6, 3).c_str());
-		          break;
-    case 34:  // Gas Device-Type
-  	          sprintf(telegram, "0-1:24.1.0(003)\r\n", val);
-		          break;
-    case 35:  // Equipment identifier (Gas)
-  	          sprintf(telegram, "0-1:96.1.0(4730303339303031363532303530323136)\r\n", val);
-              break;
-    case 36:  // Last 5-minute value (temperature converted), gas delivered to client
-              // in m3, including decimal values and capture time (Note: 4.x spec has
-  	          sprintf(telegram, "0-1:24.2.1(%02d%02d%02d%02d%02d01S)(%s*m3)\r\n", (year() - 2000), month(), day(), hour(), minute(), 
-                                                                            Format(GDelivered, 9, 3).c_str());
-              break;
-  	case 37:  sprintf(telegram, "!xxxx\r\n");		
-  	          break;
-              
-  } // switch(line)
-
-  if (line < 37) {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
-    if (Verbose) {
-      if (line == 0) {
-        _dThis = true;
-        Debugln();
-      }
-      _dThis = false;
-      Debug(telegram);
-    }
-    //else if (line = 3) Debug(telegram);
-  }
-
-  for(len = 0; len < MAXLINELENGTH, telegram[len] != '\0'; len++) {}    
-  
-  return len;
-
-} // buildTelegram40()
-
-
-//==================================================================================================
-int16_t buildTelegram30(int16_t line, char telegram[]) {
-/*
-**  /KMP5 KA6U001585575011                - Telegram begin-marker + manufacturer + serial number
-**  
-**  0-0:96.1.1(204B413655303031353835353735303131)    -  Serial number in hex
-**  1-0:1.8.1(08153.408*kWh)                          -  +T1: Energy input, low tariff (kWh)
-**  1-0:1.8.2(05504.779*kWh)                          -  +T2: Energy input, normal tariff (kWh)
-**  1-0:2.8.1(00000.000*kWh)                          -  -T3: Energy output, low tariff (kWh)
-**  1-0:2.8.2(00000.000*kWh)                          -  -T4: Energy output, normal tariff (kWh)
-**  0-0:96.14.0(0002)                                 -  Current tariff (1=low, 2=normal)
-**  1-0:1.7.0(0000.30*kW)                             -  Actual power input (kW)
-**  1-0:2.7.0(0000.00*kW)                             -  Actual power output (kW)
-**  0-0:17.0.0(999*A)                                 -  Max current per phase (999=no max)
-**  0-0:96.3.10(1)                                    -  Switch position
-**  0-0:96.13.1()                                     -  Message code
-**  0-0:96.13.0()                                     -  Message text
-**  0-1:24.1.0(3)                                     -  Attached device type identifier
-**  0-1:96.1.0(3238313031353431303031333733353131)    -  Serial number of gas meter
-**  0-1:24.3.0(190718190000)(08)(60)(1)(0-1:24.2.1)(m3) -  Time of last gas meter update
-**  (04295.190)                                       -  Gas meter value (m³)
-**  0-1:24.4.0(1)                                     -  Gas valve position
-**  !                                                 -  Telegram end-marker
-**  
-*/
-//==================================================================================================
-  int16_t len = 0;
-
-  float val;
-
-  switch (line) {
-                                //KMP5 KA6U001585575011
-    case 0:   sprintf(telegram, "/KMP5 KA6U001585575011\r\n");
-              break;
-    case 1:   sprintf(telegram, "\r\n");    
-              break;
-    case 2:   sprintf(telegram, "0-0:96.1.1(4530303336303000000000000000000000)\r\n", val);
-              break;
-    case 3:   // Energy Delivered
-              sprintf(telegram, "1-0:1.8.1(%s*kWh)\r\n", Format(ED_T1, 10, 3).c_str());
-              break;
-    case 4:   sprintf(telegram, "1-0:1.8.2(%s*kWh)\r\n", Format(ED_T2, 10, 3).c_str());
-              break;
-    case 5:   // Energy Returned
-              sprintf(telegram, "1-0:2.8.1(%s*kWh)\r\n", Format(ER_T1, 10, 3).c_str());
-              break;
-    case 6:   sprintf(telegram, "1-0:2.8.2(%s*kWh)\r\n", Format(ER_T2, 10, 3).c_str());
-              break;
-    case 7:   // Tariff indicator electricity
-              sprintf(telegram, "0-0:96.14.0(%04d)\r\n", ETariffInd);
-              break;
-    case 8:   // Actual electricity power delivered (+P) in 1 Watt resolution
-              sprintf(telegram, "1-0:1.7.0(%s*kW)\r\n", Format(PDelivered, 6, 2).c_str());
-              break;
-    case 9:   // Actual electricity power received (-P) in 1 Watt resolution
-              sprintf(telegram, "1-0:2.7.0(%s*kW)\r\n", Format(PReceived, 6, 2).c_str());
-              break;
-    case 10:  // Max current per phase (999=no max)
-              sprintf(telegram, "0-0:17.0.0(016*A)\r\n", val);
-              break;
-    case 11:  // Switch position (?)
-              sprintf(telegram, "0-0:96.3.10(1)\r\n", val);
-              break;
-    case 12:  // Text message code
-              sprintf(telegram, "0-0:96.13.1()\r\n", val);
-              break;
-    case 13:  // Text message text
-              sprintf(telegram, "0-0:96.13.0()\r\n", val);
-              break;
-    case 14:  // Gas Device-Type
-              sprintf(telegram, "0-1:24.1.0(3)\r\n", val);
-              break;
-    case 15:  // Equipment identifier (Gas)
-              sprintf(telegram, "0-1:96.1.0(4730303339303031363500000000000000)\r\n", val);
-              break;
-    case 16:  // Last 5-minute value (temperature converted), gas delivered to client
-              // in m3, including decimal values and capture time 
-              sprintf(telegram, "0-1:24.3.0(%02d%02d%02d%02d%02d00)(08)(60)(1)(0-1:24.2.1)(m3)\r\n", (year() - 2000), month(), day(), hour(), minute());
-              break;
-    case 17:  sprintf(telegram, "(%s)\r\n", Format(GDelivered, 9, 3).c_str());
-              break;
-    case 18:  // Gas valve position
-              sprintf(telegram, "0-1:24.4.0(1)\r\n", val);
-              break;
-    case 19:  sprintf(telegram, "!\r\n\r\n");     // just for documentation 
-              break;
-              
-  } // switch(line)
-
-  if (line < 19) {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
-    if (Verbose) {
-      if (line == 0) {
-        _dThis = true;
-        Debugln();
-      }
-      _dThis = false;
-      Debug(telegram);
-    }
-  }
-
-  for(len = 0; len < MAXLINELENGTH, telegram[len] != '\0'; len++) {}    
-  
-  return len;
-
-} // buildTelegram30()
 
 
 //==================================================================================================
@@ -592,8 +300,8 @@ void updateMeterValues(uint8_t period) {
   IPD_l1      = (float)(random(1,1111) * 0.001102);
   IPD_l2      = (float)(random(1,892)  * 0.001015);
   IPD_l3      = (float)(random(1,773)  * 0.001062);
-  if (actHour >= 6 && actHour <= 18) {
-    IPR_l1    = (float)(random(1,975) * 0.001109);
+  if (actHour >= 4 && actHour <= 22) {
+    IPR_l1    = (float)(random(1,975)  * 0.001109);
     IPR_l2    = (float)(random(1,754)  * 0.001031);
     IPR_l3    = (float)(random(1,613)  * 0.001092);
     
@@ -612,7 +320,7 @@ void updateMeterValues(uint8_t period) {
 
   currentCRC = 0;
   if (String(actDSMR) == "40") {
-    for (int16_t line = 0; line < 38; line++) {
+    for (int16_t line = 0; line <= maxLines40; line++) {
       yield();
       int16_t len = buildTelegram40(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
@@ -620,8 +328,18 @@ void updateMeterValues(uint8_t period) {
     Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose) Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
 
+  } else if (String(actDSMR) == "BE") {
+    for (int16_t line = 0; line <= maxLinesBE; line++) {
+      yield();
+      int16_t len = buildTelegramBE(line, telegram);  // also: prints to DSMRsend
+      calcCRC = decodeTelegram(len);
+    } 
+    Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (Verbose) Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+
   } else {
-    for (int16_t line = 0; line < 20; line++) {
+    //for (int16_t line = 0; line < 20; line++) {
+    for (int16_t line = 0; line <= maxLines30; line++) {
       yield();
       int16_t len = buildTelegram30(line, telegram);  // also: prints to DSMRsend
 //    calcCRC = decodeTelegram(len);  // why??
@@ -650,39 +368,32 @@ void setup() {
   TelnetStream.begin();
   TelnetStream.flush();
 
-  Serial.println("\nStarting ....\n");
-  Debugln("\nStarting ....\n");
-  Serial.println("\n=======================");
-  Debugln("\n=======================");
+  //Serial.println("\nStarting ....\n");
+  DebugTln("\nStarting ....\n");
+  //Serial.println("\n=======================");
+  DebugTln("\n=======================");
 
-  Serial.printf("Connect to WiFi as [%s]\n", String(_HOSTNAME).c_str());
-  WiFi.hostname(_HOSTNAME);
-  WiFi.begin ( _SSID, _PASSWORD );
-  WiFi.mode(WIFI_STA);
-  int probeerWiFi = 0;
-  // Wait for connection
-  while ( WiFi.status() != WL_CONNECTED ) {
-    delay ( 500 ); Serial.print ( "." );
-    probeerWiFi++;
-    if ( probeerWiFi > 20 ) {
-      ESP.reset();
-      while(true)
-        delay(1);
-    }
+  DebugTf("Connect to WiFi as [%s]\n", String(_HOSTNAME).c_str());
+  digitalWrite(LED_BUILTIN, HIGH);
+  startWiFi(_HOSTNAME);
+  for (int i=0; i<10; i++) {
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+    delay(400);
   }
+
   // WiFi connexion is OK
   Debugln ( "" );
-  Serial.print ( "Connected to " ); Serial.println ( WiFi.SSID() );
-  Debug ( "Connected to " ); Serial.println ( WiFi.SSID() );
-  Serial.print ( "IP address: " );  Serial.println ( WiFi.localIP() );
-  Debug ( "IP address: " );  Serial.println ( WiFi.localIP() );
+  //Serial.print ( "Connected to " ); Serial.println ( WiFi.SSID() );
+  DebugT ( "Connected to " ); Debugln ( WiFi.SSID() );
+  //Serial.print ( "IP address: " );  Serial.println ( WiFi.localIP() );
+  DebugT ( "IP address: " );  Debugln ( WiFi.localIP() );
 
   if (MDNS.begin(_HOSTNAME)) {              // Start the mDNS responder for DSMRinjector.local
-    Serial.println("mDNS responder started");
-    Debugln("mDNS responder started");
+    //Serial.println("mDNS responder started");
+    DebugTln("mDNS responder started");
   } else {
-    Serial.println("Error setting up MDNS responder!");
-    Debugln("Error setting up MDNS responder!");
+    //Serial.println("Error setting up MDNS responder!");
+    DebugTln("Error setting up MDNS responder!");
   }
   //--- webSockets -------
   MDNS.addService("arduino", "tcp", 81);
@@ -733,31 +444,25 @@ void setup() {
   Serial.flush();
   DebugFlush();
 
-  httpUpdater.setup(&httpServer);
+//  httpUpdater.setup(&httpServer);
 
   httpServer.on("/", HTTP_POST, callIndex_html);
   httpServer.on("/ReBoot", HTTP_POST, handleReBoot);
 
   httpServer.onNotFound([]() {
-    //_dThis = true;
-    //Debugln("============================================================");
-    //_dThis = true;
-    //Debugf("onNotFound(%s)\n", httpServer.uri().c_str());
-    //_dThis = true;
-    //Debugln("============================================================");
+    //DebugTln("============================================================");
+    //DebugTf("onNotFound(%s)\n", httpServer.uri().c_str());
+    //DebugTln("============================================================");
     if (httpServer.uri() == "/update") {
-      _dThis = true;
-      Debugf("onNotFound(%s): ==> [/update]\n", httpServer.uri().c_str());
+      DebugTf("onNotFound(%s): ==> [/update]\n", httpServer.uri().c_str());
       httpServer.send(200, "text/html", "/update" );
       
     } else if (httpServer.uri() == "/") {
-      //_dThis = true;
-      //Debugf("onNotFound(%s) ==> [/]\n", httpServer.uri().c_str());
+      //DebugTf("onNotFound(%s) ==> [/]\n", httpServer.uri().c_str());
       httpServer.send(200, "text/html", DSMRindex_html );
       reloadPage("/");
   //} else {
-  //  _dThis = true;
-  //  Debugf("onNotFound(%s) ==> [???] do nothing ..\n", httpServer.uri().c_str());
+  //  DebugTf("onNotFound(%s) ==> [???] do nothing ..\n", httpServer.uri().c_str());
       
     }
   });
@@ -778,8 +483,6 @@ void setup() {
 //==================================================================================================
 void loop() {
 //==================================================================================================
-  _dThis = true;
-
   httpServer.handleClient();
   webSocket.loop();
   MDNS.update();
@@ -802,6 +505,12 @@ void loop() {
         Serial.begin(9600, SERIAL_7E1);
       //Serial.begin(9600);
         delay(200);
+      } else if (String(actDSMR) == "BE") {
+        sprintf(savDSMR, "BE");
+        Serial.end(); 
+        delay(200);
+        Serial.begin(115200);
+        delay(200);
       } else {
         sprintf(savDSMR, "40");
         Serial.end(); 
@@ -817,8 +526,7 @@ void loop() {
   
   switch(runMode) {
     case SInit: // --- start date/time
-                _dThis = true;
-                Debugln("runMode [SInit]");
+                DebugTln("runMode [SInit]");
                 actYear   = year();
                 actMonth  = month();
                 actDay    = day();
@@ -832,8 +540,7 @@ void loop() {
                 break;
                 
     case SMonth: // per Maand
-                _dThis = true;
-                //Debugln("runMode [SMonth]");
+                //DebugTln("runMode [SMonth]");
                 actSec  = 5;
                 for (int m = 1; m <= 3; m++) {
                     updateTime();
@@ -856,8 +563,7 @@ void loop() {
                 break;
                 
     case SDay: // per Dag
-                _dThis = true;
-                //Debugln("runMode [SDay]");
+                //DebugTln("runMode [SDay]");
                 actSec  = 11;
                 for (int d = 1; d <= 3; d++) {
                   updateTime();
@@ -878,8 +584,7 @@ void loop() {
                 break;
                 
     case SHour: // init
-                _dThis = true;
-                //Debugln("runMode [SHour]");
+                //DebugTln("runMode [SHour]");
                 actSec = 23;
                 for (int h = 1; h <= 3; h++) {
                   updateTime();

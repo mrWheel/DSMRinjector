@@ -70,6 +70,7 @@ static const char DSMRindex_html[] PROGMEM =
          <td>
              <select id='actDSMR' style='font-size:14px;' onchange='doDSMRstandard()'>
                 <option value='40'>DSMR 4.0+</option>
+                <option value='BE'>DSMR BE 5.0+</option>
                 <option value='30'>DSMR 3.0</option>
               </select>
          </td>
@@ -276,6 +277,8 @@ static const char DSMRindex_html[] PROGMEM =
     var DSMR = mySelect.options[mySelect.selectedIndex].value;
     if (DSMR == "30" )  
           webSocketConn.send("setDSMR:DSMR=30" ); 
+    else if (DSMR == "BE" )  
+          webSocketConn.send("setDSMR:DSMR=BE" ); 
     else  webSocketConn.send("setDSMR:DSMR=40" ); 
   }
   

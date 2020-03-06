@@ -30,10 +30,9 @@ void handleKeyInput() {
                     break;
 /*
       case 'W':     { WiFiManager manageWiFi;
-                      _dThis = true;
-                      Debugln("**============================**");
-                      Debugln("** RESETTING WIFI CREDENTIALS **");
-                      Debugln("**============================**");
+                      DebugTln("**============================**");
+                      DebugTln("** RESETTING WIFI CREDENTIALS **");
+                      DebugTln("**============================**");
                       DebugFlush();
                       manageWiFi.resetSettings();   
                       ESP.reset();
@@ -42,7 +41,7 @@ void handleKeyInput() {
 */
       default:      Debugln("\nCommandos are:\n");
                     Debugln("   B - Board, Build info & system status");
-                    Debugln("   V - Toggle Verbose");
+                    Debugln("   V - Toggle Verbose (less telegrams will be send!)");
                     Debugln("  *R - Reboot");
                     Debugln("  *W - reset WiFi credentials");
                     Debugln(" ");

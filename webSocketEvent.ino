@@ -25,8 +25,7 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
 
     switch(type) {
         case WStype_DISCONNECTED:
-            _dThis = true;
-            Debugf("[%u] Disconnected!\n", wsClient);
+            DebugTf("[%u] Disconnected!\n", wsClient);
             isConnected = false;
             break;
             
@@ -34,8 +33,7 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
             {
                 IPAddress ip = webSocket.remoteIP(wsClient);
                 if (!isConnected) {
-                 _dThis = true;
-                 Debugf("[%u] Connected from %d.%d.%d.%d url: %s\n", wsClient, ip[0], ip[1], ip[2], ip[3], payload);
+                 DebugTf("[%u] Connected from %d.%d.%d.%d url: %s\n", wsClient, ip[0], ip[1], ip[2], ip[3], payload);
                  isConnected = true;
                  webSocket.sendTXT(wsClient, "{\"msgType\":\"ConnectState\",\"Value\":\"Connected\"}");
                 }
@@ -44,8 +42,7 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
             break;
             
         case WStype_TEXT:
-            _dThis = true;
-            Debugf("[%u] Got message: [%s]\n", wsClient, payload);
+            DebugTf("[%u] Got message: [%s]\n", wsClient, payload);
             String FWversion = String(_FW_VERSION);
 
             if (wsPayload.indexOf("getDevInfo") > -1) {
@@ -59,8 +56,7 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
               wsString += ", actHour=" + String(actHour);
               wsString += ", actSpeed=" + String(actSpeed);
 
-              _dThis = true;
-              Debugln(wsString);
+              DebugTln(wsString);
               webSocket.sendTXT(wsClient, "msgType=devInfo" + wsString);
               
             } else if (wsPayload.indexOf("newDate") > -1) {
@@ -88,8 +84,7 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
               wsString += ", actSpeed="     + String(actSpeed);
               wsString += ", actInterval="  + String(actInterval);
 
-              _dThis = true;
-              Debugf("msgType=timeStamp %s\n", wsString.c_str());
+              DebugTf("msgType=timeStamp %s\n", wsString.c_str());
               webSocket.sendTXT(wsClient, "msgType=timeStamp" + wsString);
 
               
@@ -126,16 +121,13 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t * payload, size_t l
               int8_t wc = splitString(wsPayload.c_str(), ':', wOut, 10);
               //Debugf("wOut[1] => [%s]\n", wOut[1].c_str());
               wc = splitString(wOut[1].c_str(), '=', wParm, 10);
-              //_dThis = true;
-              //Debugf("wOut[1][%s] => [%s]=[%s]\n", wOut[1].c_str(), wParm[0].c_str(), wParm[1].c_str());
+              //DebugTf("wOut[1][%s] => [%s]=[%s]\n", wOut[1].c_str(), wParm[0].c_str(), wParm[1].c_str());
               if (String(actDSMR) != wParm[0]) {
                 runStatus = 0;  // stop running!
                 sprintf(actDSMR, "%s", wParm[1].c_str());
-                _dThis = true;
-                Debugf("DSMR standaard changed to [%s]\n", actDSMR);
+                DebugTf("DSMR standaard changed to [%s]\n", actDSMR);
               }
-              //_dThis = true;
-              //Debugf("DSMR standaard [%s]\n", actDSMR);
+              //DebugTf("DSMR standaard [%s]\n", actDSMR);
 
             }
 
@@ -164,8 +156,7 @@ void updateGUI() {
   wsString += ", telegramCount=" + String(telegramCount);
   if (runStatus == 1) wsString += ", runStatus=1";
   else                wsString += ", runStatus=0";
-  _dThis = true;
-  //Debugf("msgType=timeStamp %s\n", wsString.c_str());
+  //DebugTf("msgType=timeStamp %s\n", wsString.c_str());
   nextGuiUpdate = millis() + 5000;
 
   webSocket.broadcastTXT("msgType=timeStamp" + wsString);
