@@ -13,7 +13,7 @@ static const char DSMRindex_html[] PROGMEM =
      <body>
       <div class="header">
         <h1>
-          <span id="devName">DSMR Injector</span> &nbsp; &nbsp; &nbsp;
+          <span id="devName">DSMR injector2</span> &nbsp; &nbsp; &nbsp;
           <span id="devVersion">[version]</span> &nbsp; &nbsp; &nbsp;
           <span id="devIPaddress" style='font-size: small;'>-</span> &nbsp;
         </h1>
@@ -22,26 +22,38 @@ static const char DSMRindex_html[] PROGMEM =
       <form action = '' name='mainForm' method = 'get'>
          <table>
          <tr>
+         <td style='width:120px;' valign='top'>Timing</td>
+         <td>
+             <select id='actTiming' style='font-size:14px;' onchange='doTiming()'>
+                <option value='NTP'>use NTP</option>
+                <option value='INTERN'>use Intern</option>
+              </select>
+         </td>
+         </tr><tr>
          <td style='width:150px;'>actueel Jaar</td>
          <td style='width:300px;'>
             <input id='actYear' type='number' style='font-size:14px;' name='actYear' min='2014' max='2099' 
-                                                onchange='validateField( "actYear" )'>
+                                                 disabled onchange='validateField( "actYear" )'>
          </tr><tr>
          <td>actuele Maand</td>
          <td><input id='actMonth' type='number' style='font-size:14px;' name='actMonth' min='1' max='12' 
-                                                onchange='validateField( "actMonth" )'></td>
+                                                 disabled onchange='validateField( "actMonth" )'></td>
          </tr><tr>
          <td>actuele Dag</td>
          <td><input id='actDay' type='number'   style='font-size:14px;' name='actDay' min='1' max='31' 
-                                                onchange='validateField( "actDay" )'></td>
+                                                 disabled onchange='validateField( "actDay" )'></td>
          </tr><tr>
          <td>actueel Uur</td>
          <td><input id='actHour' type='number'   style='font-size:14px;' name='actHour' min='0' max='24' 
-                                                onchange='validateField( "actHour" )'></td>
+                                                 disabled onchange='validateField( "actHour" )'></td>
          </tr><tr>
          <td>Stappen in Minuten</td>
-         <td><input id='actSpeed' type='number'   style='font-size:14px;' name='actSpeed' min='1' max='15' 
-                                                onchange='validateField( "actSpeed" )'></td>
+         <td><input id='actSpeed' type='number'  style='font-size:14px;' name='actSpeed' min='1' max='15' 
+                                                 onchange='validateField( "actSpeed" )'></td>
+         </tr><tr>
+         <td>gas meter op MBus</td>
+         <td><input id='actGasMBus' type='number' style='font-size:14px;' name='actGasMBus' min='0' max='3' 
+                                                onchange='validateField( "actGasMBus" )'></td>
          </tr><tr>
          <td><hr></td><td style='width:300px;'><hr><td>
          </tr><tr>
@@ -72,6 +84,7 @@ static const char DSMRindex_html[] PROGMEM =
                 <option value='40'>DSMR 4.0+</option>
                 <option value='BE'>DSMR BE 5.0+</option>
                 <option value='30'>DSMR 3.0</option>
+                <option value='FS'>From File</option>
               </select>
          </td>
          </tr><tr>
@@ -99,12 +112,12 @@ static const char DSMRindex_html[] PROGMEM =
          </tr><tr>
          <td style='width:120px;' valign='top'>timeStamp</td>
          <td>
-            [<span id="timeStamp">?</span>]
+            [<span id='timeStamp'>?</span>]
          </td>
          </tr><tr>
          <td style='width:120px;' valign='top'>Telegrammen</td>
          <td>
-            [<span id=telegramCount>-</span>] verstuurd
+            [<span id='telegramCount'>-</span>] verstuurd
          </td>
          </tr><tr>
          <td><hr></td><td style='width:300px;'><hr><td>
@@ -118,14 +131,18 @@ static const char DSMRindex_html[] PROGMEM =
           <input type='submit' class='button' name='SUBMIT' value='select Firmware' ENABLED/>
         </form>
 
-        <form action='/ReBoot' method='POST'>ReBoot DSMRinjector 
+        <form action='/FSmanager' method='GET'><big>FS manager </big>
+          <input type='submit' class='button' name='SUBMIT' value='FS Manager' ENABLED/>
+        </form>
+
+        <form action='/ReBoot' method='POST'>ReBoot DSMRinjector2 
           <input type='submit' class='button' name='SUBMIT' value='ReBoot'>
         </form>
       </div>
      <br>
 <!-- ------------------------------------------------------------ -->
 <script>
-"use strict";
+//"use strict";
 
   let webSocketConn;
   let needReload  = true;
@@ -172,7 +189,7 @@ static const char DSMRindex_html[] PROGMEM =
     console.log( " " );
     needReload  = true;
     let redirectButton = "<p></p><hr><p></p><p></p>"; 
-    redirectButton    += "<style='font-size: 50px;'>Disconneted from DSMR Injector"; 
+    redirectButton    += "<style='font-size: 50px;'>Disconneted from DSMR injector2"; 
     redirectButton    += "<input type='submit' value='re-Connect' "; 
     redirectButton    += " onclick='window.location=\"/\";' />  ";     
     redirectButton    += "<p></p><p></p><hr><p></p>"; 
@@ -192,8 +209,7 @@ static const char DSMRindex_html[] PROGMEM =
     console.log( "parsePayload["+payload+"]" );
 
     singlePair   = payload.split("," );
-    var msgType  = singlePair[0].split("=" );
-
+    var msgType  = singlePair[0].split("=");
     if (msgType[1] == "devInfo" ) {
         console.log("devInfo: "+devIPaddress+","+devVersion);
         for ( var i = 1; i < singlePair.length; i++ ) {
@@ -204,23 +220,36 @@ static const char DSMRindex_html[] PROGMEM =
         }
     }
 
-    if (msgType[1] == "timeStamp" ) {
+    if (msgType[1] == "timeStamp" ) 
+    {
         console.log("timeStamp: "+payload);
-        for ( var i = 1; i < singlePair.length; i++ ) {
+        for ( var i = 1; i < singlePair.length; i++ ) 
+        {
           onePair = singlePair[i].split("=");
           console.log("set["+onePair[0].trim()+"] to["+onePair[1].trim()+"]" );
-          if (onePair[0].trim() == "runStatus" ) {
+          if (onePair[0].trim() == "runStatus" ) 
+          {
             if (onePair[1].trim() == "1" )
                   document.forms["mainForm"]["doStart"].checked=true;
             else  document.forms["mainForm"]["doStop"].checked=true;
-          } else if (onePair[0].trim() == "actDSMR" ) {
+          } 
+          else if (onePair[0].trim() == "actTiming" ) 
+          {
+            console.log("newTiming["+onePair[1].trim()+"]" );
+            document.getElementById(onePair[0].trim()).value = onePair[1].trim();
+          } 
+          else if (onePair[0].trim() == "actDSMR" ) 
+          {
             console.log("newDSMR["+onePair[1].trim()+"]" );
             document.getElementById(onePair[0].trim()).value = onePair[1].trim();
             var radios = document.getElementsByName( "runStatus" );
             if (radios[1].checked) // running
                   document.getElementById("actDSMR").disabled=true;
             else  document.getElementById("actDSMR").disabled=false;
-          } else {
+          } 
+          else 
+          {
+            //console.log("fall through["+onePair[0]+"]->["+onePair[1]+"]");
             document.getElementById(onePair[0].trim()).innerHTML = onePair[1].trim();
             document.getElementById(onePair[0].trim()).setAttribute('value',onePair[1].trim());
           }
@@ -238,9 +267,12 @@ static const char DSMRindex_html[] PROGMEM =
     var newHour     = document.getElementById('actHour').value;  
     var newSpeed    = document.getElementById('actSpeed').value;  
     var newInterval = document.getElementById('actInterval').value;  
+    var newGasMBus  = document.getElementById('actGasMBus').value;  
     console.log("newDate:newYear="+newYear+",newMonth="+newMonth+",newDay="+newDay+",newHour="+newHour+",newSpeed="+newSpeed);
     webSocketConn.send("newDate:newYear="+newYear+",newMonth="+newMonth
-                             +",newDay="+newDay+",newHour="+newHour+",newSpeed="+newSpeed+",newInterval="+newInterval);
+                             +",newDay="+newDay+",newHour="+newHour
+                             +",newSpeed="+newSpeed+",newInterval="+newInterval
+                             +",newGasMBus="+newGasMBus);
     
   };  // validateField()
 
@@ -272,6 +304,27 @@ static const char DSMRindex_html[] PROGMEM =
     }
   };  // doRunMode()
   
+  function doTiming() {
+    var mySelect = document.getElementById('actTiming');
+    var TIMING = mySelect.options[mySelect.selectedIndex].value;
+    if (TIMING == "INTERN" )  
+    {
+      document.getElementById("actYear").disabled=false;
+      document.getElementById("actMonth").disabled=false;
+      document.getElementById("actDay").disabled=false;
+      document.getElementById("actHour").disabled=false;
+      webSocketConn.send("setTiming:Timing=INTERN" ); 
+    }
+    else  
+    {
+      document.getElementById("actYear").disabled=true;
+      document.getElementById("actMonth").disabled=true;
+      document.getElementById("actDay").disabled=true;
+      document.getElementById("actHour").disabled=true;
+      webSocketConn.send("setTiming:Timing=NTP" ); 
+    }
+  };
+  
   function doDSMRstandard() {
     var mySelect = document.getElementById('actDSMR');
     var DSMR = mySelect.options[mySelect.selectedIndex].value;
@@ -279,8 +332,10 @@ static const char DSMRindex_html[] PROGMEM =
           webSocketConn.send("setDSMR:DSMR=30" ); 
     else if (DSMR == "BE" )  
           webSocketConn.send("setDSMR:DSMR=BE" ); 
+    else if (DSMR == "FS" ) 
+          webSocketConn.send("setDSMR:DSMR=FS" ); 
     else  webSocketConn.send("setDSMR:DSMR=40" ); 
-  }
+  };
   
 </script>
      </body></html>)";

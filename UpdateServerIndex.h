@@ -5,22 +5,22 @@ static const char UpdateServerIndex[] PROGMEM =
         body {background-color: lightblue;}
      </style>
      <body>
-     <h1>DSMRinjector Flash utility</h1>
+     <h1>DSMRinjector2 Flash utility</h1>
      <form method='POST' action='?cmd=0' enctype='multipart/form-data'>
           Selecteer een "<b>.ino.bin</b>" bestand<br/>
           <input type='file' accept='ino.bin' name='firmware'>
           <input type='submit' value='Flash Firmware'>
       </form>
       <form method='POST' action='?cmd=100' enctype='multipart/form-data'> 
-          Selecteer een "<b>.spiffs.bin</b>" bestand<br/>
-          <input type='file' accept='spiffs.bin' name='filesystem'>
-          <input type='submit' value='Flash Spiffs'>
+          Selecteer een "<b>.mklittlefs.bin</b>" bestand<br/>
+          <input type='file' accept='mklittlefs.bin' name='filesystem'>
+          <input type='submit' value='Flash littleFS'>
       </form>
       <hr>
       <br/><font color='red'>Let op!!!</font>
-      <br/>Bij het flashen van SPIFFS raakt u de RING-bestanden kwijt. 
-      <br/>Maak daarom eerst een kopie van deze bestanden (met de FSexplorer) 
-      en zet de data-bestanden na het flashen van SPIFFS weer terug.
+      <br/>Bij het flashen van het LittleFS raakt u de aanwezige bestanden kwijt. 
+      <br/>Maak daarom eerst een kopie van deze bestanden (met de FSmanager) 
+      <br/>en zet de data-bestanden na het flashen van LittleFS weer terug.
       <hr>
       <br/>
       <br/>Wacht nog <span style='font-size: 1.3em;' id="waitSeconds">120</span> seconden ..
@@ -46,11 +46,11 @@ static const char UpdateServerSuccess[] PROGMEM =
         body {background-color: lightgray;}
      </style>
      <body>
-     <h1>DSMRinjector Flash utility</h1>
+     <h1>DSMRinjector2 Flash utility</h1>
      <br/>
      <h2>Update successfull!</h2>
      <br/>
-     <br/>Wait for the DSMRinjector to reboot and start the HTTP server
+     <br/>Wait for the DSMRinjector2 to reboot and start the HTTP server
      <br/>
      <br>
      <br/>Wacht nog <span style='font-size: 1.3em;' id="waitSeconds">60</span> seconden ..

@@ -21,7 +21,7 @@ void startWiFi(const char* hostname)
   manageWiFi.setDebugOutput(true);
   
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  manageWiFi.setAPCallback(configModeCallback);
+  //--aaw--manageWiFi.setAPCallback(configModeCallback);
 
   //---sets timeout until configuration portal gets turned off
   //useful to make it all retry or go to sleep in seconds
@@ -31,7 +31,8 @@ void startWiFi(const char* hostname)
   //if it does not connect it starts an access point with the specified name
   //here  "DSMR-WS-<MAC>"
   //and goes into a blocking loop awaiting configuration
-  if (!manageWiFi.autoConnect(thisAP.c_str())) 
+  //if (!manageWiFi.autoConnect(thisAP.c_str())) 
+  if (!manageWiFi.autoConnect(String(hostname).c_str())) 
   {
     DebugTln(F("failed to connect and hit timeout"));
 

@@ -1,6 +1,6 @@
 /* 
 ***************************************************************************  
-**  Program  : Debug.h, part of DSMRinjector
+**  Program  : Debug.h, part of DSMRinjector2
 **
 **  Copyright (c) 2020 Willem Aandewiel
 **  Met dank aan Erik
@@ -11,17 +11,17 @@
 
 /*---- start macro's ------------------------------------------------------------------*/
 
-#define Debug(...)      ({ Serial.print(__VA_ARGS__);         \
+#define Debug(...)      ({ \
                            TelnetStream.print(__VA_ARGS__);   \
                         })
-#define Debugln(...)    ({ Serial.println(__VA_ARGS__);       \
+#define Debugln(...)    ({ \
                            TelnetStream.println(__VA_ARGS__); \
                         })
-#define Debugf(...)     ({ Serial.printf(__VA_ARGS__);        \
+#define Debugf(...)     ({ \
                            TelnetStream.printf(__VA_ARGS__);  \
                         })
 
-#define DebugFlush()    ({ Serial.flush(); \
+#define DebugFlush()    ({ \
                            TelnetStream.flush(); \
                         })
 
@@ -49,6 +49,6 @@ void _debugBOL(const char *fn, int line)
                 ESP.getFreeHeap(), ESP.getMaxFreeBlockSize(),\
                 fn, line);
                  
-  Serial.print (_bol);
+  //Serial.print (_bol);
   TelnetStream.print (_bol);
 }

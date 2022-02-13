@@ -1,13 +1,13 @@
 /*
-** DSMRinjector
+** DSMRinjector2
 */
-#define _FW_VERSION "v4 (06-03-2020)"
+#define _FW_VERSION "2.0 (13-02-2022)"
 /* 
-*   Arduino-IDE settings for ESP01 (black):
+*   Arduino-IDE settings for ESP12 (Generic):
 
     - Board: "Generic ESP8266 Module"
     - Flash mode: "DOUT"
-    - Flash size: "1M (no SPIFFS)"
+    - Flash size: "4M (FS 2MB)"
     - Debug port: "Disabled"
     - Debug Level: "None"
     - IwIP Variant: "v2 Lower Memory"
@@ -16,19 +16,31 @@
     - VTables: "Flash"
     - Flash Frequency: "40MHz"
     - CPU Frequency: "80 MHz"
-    - Buildin Led: "1"  // GPIO01 - Pin 2
+    - Buildin Led: "2"  // GPIO02 - Pin 2
     - Upload Speed: "115200"
     - Erase Flash: "Only Sketch"
     - Port: "?"
 
 */
 
-#include "DSMRinjector.h"
+#include "DSMRinjector2.h"
+
+/**
+//#define ICACHE_RAM_ATTR
+
+void ICACHE_RAM_ATTR flashButtonISR() 
+{
+  detachInterrupt(_FLASH_BUTTON);
+  handleFlashButton();
+  attachInterrupt(digitalPinToInterrupt(_FLASH_BUTTON), flashButtonISR, CHANGE);
+  
+}
+**/
 
 //===========================================================================================
 void callIndex_html() {
 //===========================================================================================
-  //Serial.println("uri() => / !");
+  Serial.println("uri() => / !");
   Debugln("uri() => / !");
   httpServer.send(200, "text/html", DSMRindex_html );
 
@@ -46,10 +58,10 @@ void handleReBoot() {
   redirectHTML += "<style type='text/css'>";
   redirectHTML += "body {background-color: lightblue;}";
   redirectHTML += "</style>";
-  redirectHTML += "<title>Redirect to DSMRinjector</title>";
+  redirectHTML += "<title>Redirect to DSMRinjector2</title>";
   redirectHTML += "</head>";
-  redirectHTML += "<body><h1>DSMRinjector</h1>";
-  redirectHTML += "<h3>Rebooting DSMRinjector</h3>";
+  redirectHTML += "<body><h1>DSMRinjector2</h1>";
+  redirectHTML += "<h3>Rebooting DSMRinjector2</h3>";
   redirectHTML += "<br><div style='width: 500px; position: relative; font-size: 25px;'>";
   redirectHTML += "  <div style='float: left;'>Redirect over &nbsp;</div>";
   redirectHTML += "  <div style='float: left;' id='counter'>20</div>";
@@ -57,7 +69,7 @@ void handleReBoot() {
   redirectHTML += "  <div style='float: right;'>&nbsp;</div>";
   redirectHTML += "</div>";
   redirectHTML += "<!-- Note: don't tell people to `click` the link, just tell them that it is a link. -->";
-  redirectHTML += "<br><br><hr>If you are not redirected automatically, click this <a href='/'>DSMRinjector</a>.";
+  redirectHTML += "<br><br><hr>If you are not redirected automatically, click this <a href='/'>DSMRinjector2</a>.";
   redirectHTML += "  <script>";
   redirectHTML += "      setInterval(function() {";
   redirectHTML += "          var div = document.querySelector('#counter');";
@@ -72,7 +84,7 @@ void handleReBoot() {
   
   httpServer.send(200, "text/html", redirectHTML);
   
-  Debugln("ReBoot DSMRinjector ..");
+  Debugln("ReBoot DSMRinjector2 ..");
   TelnetStream.flush();
   delay(1000);
   ESP.reset();
@@ -143,6 +155,7 @@ void checkESP8266() {
   Debugf(" Flash ide speed: %u Hz\n", ESP.getFlashChipSpeed());
   Debugf("  Flash ide mode: %s\n", (ideMode == FM_QIO ? "QIO" : ideMode == FM_QOUT ? "QOUT" : ideMode == FM_DIO ? "DIO" : ideMode == FM_DOUT ? "DOUT" : "UNKNOWN"));
 
+  Debugf("          Timing: %s\r\n", useNTPtiming ? "use NTP" : "INTERN");
   Debugf("        Run Mode: %d", runMode);
   switch(runMode) {
     case 0:   Debugln(" (Initialize)");       break;
@@ -155,6 +168,7 @@ void checkESP8266() {
 
   Debugf("Minuten per stap: %d seconden\n", actSpeed);
   Debugf("        Interval: %d seconden\n", actInterval);
+  Debugf("  gas meter MBus: %d seconden\n", actGasMBus);
 
   Debugf("  DSMR standaard: %s\n", actDSMR);
   Debugf("      Run Status: %d", runStatus);
@@ -163,6 +177,8 @@ void checkESP8266() {
     case 1:   Debugln(" (Running)");    break;
     default:  Debugln(" (Unknown..)");
   }
+  
+  Debugf("Data Request pin: %s\r\n", digitalRead(_DATA_REGUEST) ? "High":"Low");
 
   Debugln("=============================================================\n");
   nextESPcheck = millis() + 1200000;
@@ -247,6 +263,17 @@ int16_t decodeTelegram(int len) {
 //==================================================================================================
 void updateTime() {
 //==================================================================================================
+  if (useNTPtiming)  // NTP
+  {
+    //actSecond = second(ntpTime);  
+    actMinute = minute(ntpTime);  
+    actHour   = hour(ntpTime);  
+    actDay    = day(ntpTime);  
+    actMonth  = month(ntpTime);  
+    actYear   = year(ntpTime);  
+    return;
+  }
+  
   if (actMinute > 59) {
     actMinute = 0;
     actHour++;
@@ -273,6 +300,8 @@ void updateMeterValues(uint8_t period) {
 //==================================================================================================
   float  Factor;
   String wsString = "";
+
+  handleFlashButton();
   
   switch(period) {
     case SMonth:  Factor = 30.0 * 24.0; break;
@@ -313,39 +342,61 @@ void updateMeterValues(uint8_t period) {
   PDelivered  = (float)(IPD_l1 + IPD_l2 + IPD_l3) / 1.0;       // Power Delivered
   PReceived   = (float)(IPR_l1 + IPR_l2 + IPR_l3) / 1.0;       // Power Returned
 
-  Debugf("l1[%5d], l2[%5d], l3[%5d] ==> l1+l2+l3[%9.3f]\n", (int)(IPD_l1 * 1000)
-                                                          , (int)(IPD_l2 * 1000)
-                                                          , (int)(IPD_l3 * 1000)
-                                                          , PDelivered);
-
+  thisSecond  = ((millis() / 1000) % 60);
+  /**
+  Debugf("injector: l1[%5d], l2[%5d], l3[%5d] ==> l1+l2+l3[%9.3f]\r\n\n"
+                                                  , (int)(IPD_l1 * 1000)
+                                                  , (int)(IPD_l2 * 1000)
+                                                  , (int)(IPD_l3 * 1000)
+                                                  , PDelivered);
+  **/
   currentCRC = 0;
-  if (String(actDSMR) == "40") {
-    for (int16_t line = 0; line <= maxLines40; line++) {
+  
+  if (String(actDSMR) == "40") 
+  {
+    for (int16_t line = 0; line <= maxLines40; line++) 
+    {
       yield();
       int16_t len = buildTelegram40(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     } 
     Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-    if (Verbose) Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (Verbose && ((telegramCount % 3) == 0)) 
+    {
+      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    }
 
-  } else if (String(actDSMR) == "BE") {
-    for (int16_t line = 0; line <= maxLinesBE; line++) {
+  } else if (String(actDSMR) == "BE") 
+  {
+    for (int16_t line = 0; line <= maxLinesBE; line++) 
+    {
       yield();
       int16_t len = buildTelegramBE(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     } 
     Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-    if (Verbose) Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (Verbose && ((telegramCount % 3) == 0)) 
+    {
+      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    }
 
-  } else {
-    //for (int16_t line = 0; line < 20; line++) {
-    for (int16_t line = 0; line <= maxLines30; line++) {
+  } else if (String(actDSMR) == "30") {
+    for (int16_t line = 0; line <= maxLines30; line++) 
+    {
       yield();
       int16_t len = buildTelegram30(line, telegram);  // also: prints to DSMRsend
 //    calcCRC = decodeTelegram(len);  // why??
     }
-    Serial.printf("!\r\n");
-    if (Verbose) Debugf("!\r\n");
+    Serial.printf("!\r\n\r\n");
+    if (Verbose && ((telegramCount % 3) == 0)) 
+    {
+      Debugf("!\r\n\r\n");
+    }
+  }
+  else  // from file!!!
+  {
+    Debugln("From file ...");
+    readTelegramFromFile();
   }
   Serial.flush();
   DebugFlush();
@@ -359,22 +410,59 @@ void setup() {
 //==================================================================================================
 
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(_SIGNAL_LED, OUTPUT);
   for (int i=0; i<20; i++) {
+    digitalWrite(_SIGNAL_LED, digitalRead(LED_BUILTIN));
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
     delay(200);
   }
   Serial.begin(115200);
+  while(!Serial) {delay(10);}
+  Serial.println("\r\nStarting up ....\r\n");
+  
+  oled_Init();
+  oled_Clear();  // clear the screen so we can paint the menu.
 
+  lastReset     = ESP.getResetReason();
+
+  pinMode(_DATA_REGUEST, INPUT);
+  pinMode(_FLASH_BUTTON, INPUT);
+  
   TelnetStream.begin();
   TelnetStream.flush();
+  oledPrintLine("*DSMRinjector2*");
+  if (lastReset != "") 
+  {
+    oledPrintLine(lastReset.substring(0, 16));
+    oledPrintLine(lastReset.substring(16));
+  }
+  oledPrintLine("telnet (poort 23)");
 
-  //Serial.println("\nStarting ....\n");
   DebugTln("\nStarting ....\n");
-  //Serial.println("\n=======================");
   DebugTln("\n=======================");
 
+  //oledPrintMsg(0, " <DSMRinjector2>", 0);
+  int8_t sPos = String(_FW_VERSION).indexOf(' ');
+  snprintf(cMsg, sizeof(cMsg), "(c)2022 [%s]", String(_FW_VERSION).substring(0,sPos).c_str());
+  oledPrintLine(String(cMsg));
+  oledPrintLine("Willem Aandewiel");
+  yield();
+
   DebugTf("Connect to WiFi as [%s]\n", String(_HOSTNAME).c_str());
+  oledPrintLine("Setup WiFi as:");
+  oledPrintLine(String(_HOSTNAME));
   digitalWrite(LED_BUILTIN, HIGH);
+/**
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname(devname);
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) 
+  {
+    Serial.print(".");
+    delay(500);
+  }
+**/
   startWiFi(_HOSTNAME);
   for (int i=0; i<10; i++) {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
@@ -385,19 +473,47 @@ void setup() {
   Debugln ( "" );
   //Serial.print ( "Connected to " ); Serial.println ( WiFi.SSID() );
   DebugT ( "Connected to " ); Debugln ( WiFi.SSID() );
+  oledPrintLine(WiFi.SSID());
+
   //Serial.print ( "IP address: " );  Serial.println ( WiFi.localIP() );
   DebugT ( "IP address: " );  Debugln ( WiFi.localIP() );
+  oledPrintLine(WiFi.localIP().toString());
 
-  if (MDNS.begin(_HOSTNAME)) {              // Start the mDNS responder for DSMRinjector.local
-    //Serial.println("mDNS responder started");
+  if (MDNS.begin(_HOSTNAME)) {              // Start the mDNS responder for DSMRinjector2.local
     DebugTln("mDNS responder started");
   } else {
-    //Serial.println("Error setting up MDNS responder!");
     DebugTln("Error setting up MDNS responder!");
   }
   //--- webSockets -------
   MDNS.addService("arduino", "tcp", 81);
   MDNS.port(81);  
+
+  //--------------------------------------------------------------------------
+  oledPrintLine("Setup NTP..");
+  if (!startNTP())
+  {
+    DebugTln(F("ERROR!!! No NTP server reached!\r\n\r"));
+    if (settingOledType > 0)
+    {
+      oledPrintLine("geen reactie van");
+      oledPrintLine("NTP server's"); 
+      oledPrintLine("Reboot DSMR-logger");
+    }
+    delay(2000);
+    ESP.restart();
+    delay(3000);
+  }
+  
+  setSyncProvider(getNtpTime);
+  snprintf(cMsg, sizeof(cMsg), "%02d-%02d-%02d %02d:%02d:%02d (%s)"
+                        , year(ntpTime), month(ntpTime), day(ntpTime) 
+                        , hour(ntpTime), minute(ntpTime), second(ntpTime)
+                        , DSTactive ? "CEST":"CET");   
+  DebugTf("NTP time is [%s]\r\n", cMsg);
+  oledPrintLine("NTP service ok!");
+  oledPrintLine(cMsg);
+  //--------------------------------------------------------------------------
+  
 
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
@@ -425,14 +541,15 @@ void setup() {
   PDelivered  = 0.0;         // Power Delivered
   PReceived   = 0.0;         // Power Returned
   GDelivered  = 100.001;     // Gas Delevered
-  actYear     = 2014;
-  actMonth    = 1;
-  actDay      = 1;
-  actHour     = 0;
-  actMinute   = 1;
+  //actYear     = 2014;
+  //actMonth    = 1;
+  //actDay      = 1;
+  //actHour     = 0;
+  //actMinute   = 1;
   actSec      = 1;
   actSpeed    = 5;
-  setTime(actHour, actMinute, actSec, actDay, actMonth, actYear);
+  actGasMBus  = 1;
+  //setTime(actHour, actMinute, actSec, actDay, actMonth, actYear);
   sprintf(actDSMR, "40");
   sprintf(savDSMR, "40");
   nextGuiUpdate = millis() + 1;
@@ -446,18 +563,31 @@ void setup() {
 
 //  httpUpdater.setup(&httpServer);
 
-  httpServer.on("/", HTTP_POST, callIndex_html);
-  httpServer.on("/ReBoot", HTTP_POST, handleReBoot);
+  Serial.println("\r\nLittleFS.begin() ..");
+  Debugln("\r\nLittleFS.begin() ..");
+  oledPrintLine("Start littleFS ..");
+  setupFS();
+  
+  readSettings(true);
 
-  httpServer.onNotFound([]() {
+  httpServer.on("/", HTTP_POST, callIndex_html);
+  //httpServer.on("/ReBoot", HTTP_POST, handleReBoot);
+  httpServer.serveStatic("/FSmanager",     LittleFS, "/littleFSmanager.html");
+  httpServer.serveStatic("/FSmanager.png", LittleFS, "/FSmanager.png");
+
+  /*****
+  httpServer.onNotFound([]() 
+  {
     //DebugTln("============================================================");
     //DebugTf("onNotFound(%s)\n", httpServer.uri().c_str());
     //DebugTln("============================================================");
-    if (httpServer.uri() == "/update") {
+    if (httpServer.uri() == "/update") 
+    {
       DebugTf("onNotFound(%s): ==> [/update]\n", httpServer.uri().c_str());
       httpServer.send(200, "text/html", "/update" );
       
-    } else if (httpServer.uri() == "/") {
+    } else if (httpServer.uri() == "/") 
+    {
       //DebugTf("onNotFound(%s) ==> [/]\n", httpServer.uri().c_str());
       httpServer.send(200, "text/html", DSMRindex_html );
       reloadPage("/");
@@ -466,52 +596,110 @@ void setup() {
       
     }
   });
+  *****/
   
   httpServer.begin();
   Serial.println( "HTTP server started" );
-  for (int i = 0; i< 10; i++) {
+  oledPrintLine("HTTP Server Started!");
+  for (int i = 0; i< 10; i++) 
+  {
+    digitalWrite(_SIGNAL_LED, !digitalRead(LED_BUILTIN));
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-    delay(200);
+    delay(100);
   }
 
   Serial.println("\nAnd now it begins ....");
+
+  Serial.printf("Data Request Pin is %s\r\n", digitalRead(_DATA_REGUEST) ? "High":"Low");
+  
+  Serial.println("\r\nFurther debugging only on Telnet!\r\n");
+  Serial.flush();
   Debugln("\nAnd now it begins ....");
+  Debugln("\r\nFurther debugging only on Telnet!\r\n");
+  DebugFlush();
+  oled_Clear();  // clear the screen so we can paint the menu.
+  sprintf(cMsg, "Protocol %s", actDSMR);
+  oledPrintMsg(0, cMsg, 0);
+  sprintf(cMsg, "Send: %8u", telegramCount);
+  oledPrintMsg(3, cMsg, 10);
+  
+  digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
+  //Serial.swap();  //-- set TX to GPIO02 (pin 17)
+
+  /*attachInterrupt(digitalPinToInterrupt(_FLASH_BUTTON), flashButtonISR, CHANGE);*/
 
 } // setup()
 
 
 //==================================================================================================
-void loop() {
+void loop() 
 //==================================================================================================
+{
   httpServer.handleClient();
   webSocket.loop();
   MDNS.update();
   handleKeyInput();
-
-  if (millis() > nextESPcheck) {
+  
+  handleFlashButton();
+  
+  if (millis() > nextESPcheck) 
+  {
     checkESP8266();
   }
 
-  if (millis() > nextGuiUpdate) {
+  if (millis() > nextGuiUpdate) 
+  {
     updateGUI();
   }
+
+  if (millis() > signalLedTimer)
+  {
+    digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
+  }
   
-  if (runStatus == 0) {
-    if (String(actDSMR) != String(savDSMR)) {
-      if (String(actDSMR) == "30") {
+
+  if (digitalRead(_DATA_REGUEST))
+        digitalWrite(LED_BUILTIN, HIGH);
+  else  digitalWrite(LED_BUILTIN, LOW);
+  
+  if (runStatus == 0)
+  {
+    if (String(actDSMR) != String(savDSMR)) 
+    {
+      if (String(actDSMR) == "30") 
+      {
         sprintf(savDSMR, "30");
         Serial.end(); 
         delay(200);
         Serial.begin(9600, SERIAL_7E1);
       //Serial.begin(9600);
         delay(200);
-      } else if (String(actDSMR) == "BE") {
+      } else if (String(actDSMR) == "BE") 
+      {
         sprintf(savDSMR, "BE");
         Serial.end(); 
         delay(200);
         Serial.begin(115200);
         delay(200);
-      } else {
+      } else if (String(actDSMR) == "FS") 
+      {
+        sprintf(savDSMR, "FS");
+        Serial.end(); 
+        delay(200);
+        Serial.begin(115200);
+        delay(200);
+        Serial.println("-> Select File!");
+        Debugln("-> Select File!");
+        oledPrintLine("-> From FILE!");
+        telegramFile = FSYS.open(_TELEGRAM_FILE, "r"); // open for reading
+        if (!telegramFile) 
+        {
+          Debugf("open(%s, 'r') FAILED!!! --> Bailout\r\n", _TELEGRAM_FILE);
+          return;
+        }
+
+      } else 
+      {
         sprintf(savDSMR, "40");
         Serial.end(); 
         delay(200);
@@ -522,9 +710,27 @@ void loop() {
     return;   // Stopped, nothing to do!
   }
 
+
+  if (digitalRead(_DATA_REGUEST))
+  {
+    digitalWrite(LED_BUILTIN, LOW);
+  }
+  else
+  {
+    digitalWrite(LED_BUILTIN, HIGH);
+    return;
+  }
+
   if (millis() < nextTelegram)  return;   // not yet time for new Telegram
+
+  //-- only show 3 telegrams in Verbode mode
+  //Debugf("verboseCount [%d]\r\n", verboseCount);
+  if (verboseCount > 6) Verbose = false;
+  digitalWrite(_SIGNAL_LED, LOW); //-- inversed
+  signalLedTimer = millis()+250;
   
-  switch(runMode) {
+  switch(runMode) 
+  {
     case SInit: // --- start date/time
                 DebugTln("runMode [SInit]");
                 actYear   = year();
@@ -612,6 +818,23 @@ void loop() {
                 nextTelegram = millis() + (actInterval * 1000);
 
   } // switch(runMode)
+
+  if (Verbose) 
+  {
+    verboseCount++;
+  }
+
+  if (lastReset != "") 
+  {
+    oledPrintMsg(2, lastReset, 0);
+  }
+
+  if (millis()+_SHOW_BTN_TIME > showBtnTimer)
+  {
+    oledPrintMsg(1, "                       ", 10);
+  }
+  sprintf(cMsg, "Send: %8u", telegramCount);
+  oledPrintMsg(3, cMsg, 10);
 
   
 } // loop()

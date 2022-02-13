@@ -19,8 +19,12 @@ void handleKeyInput() {
       case 'b':
       case 'B':     checkESP8266();
                     break;
+      case 's':
+      case 'S':     runStatus = !runStatus;
+                    break;
       case 'v':
       case 'V':     Verbose = !Verbose;
+                    verboseCount = 0;
                     break;
       case 'R':     Debugln("\n==========================================");
                     Debugln("      R E B O O T   R E Q U E ST E D");
@@ -39,11 +43,12 @@ void handleKeyInput() {
                     }
                     break;
 */
-      default:      Debugln("\nCommandos are:\n");
-                    Debugln("   B - Board, Build info & system status");
-                    Debugln("   V - Toggle Verbose (less telegrams will be send!)");
-                    Debugln("  *R - Reboot");
-                    Debugln("  *W - reset WiFi credentials");
+      default:      Debugln("\nCommandos are:\r\n");
+                    Debugln("   B - Board, Build info & system status\r");
+                    Debugf( "   S - Start/Stop sending telegrams [%s]\r\n", runStatus ? "Running":"Stopped");
+                    Debugf( "   V - Toggle Verbose [%s] (less telegrams will be send!)\r\n", Verbose ? "On":"Off");
+                    Debugln("  *R - Reboot\r");
+                    Debugln("  *W - reset WiFi credentials\r");
                     Debugln(" ");
 
     } // switch()
