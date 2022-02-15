@@ -1,13 +1,13 @@
 
 
-#define MAXLINELENGTH   512 // longest normal line is 47 char (+3 for \r\n\0)
-#define _HOSTNAME       "DSMRinjector2"
+//-- longest normal line (0-9:96.13.1) is 2048 char (+3 for \r\n\0)
+#define MAXLINELENGTH   2051 
+#define _HOSTNAME       "DSMRinjector"
 #define _SIGNAL_LED      14
 #define _DATA_REGUEST    12
 #define _FLASH_BUTTON      0
 #define _SHOW_BTN_TIME    2000
 #define _SETTINGS_FILE      "/DSMRsettings.ini"
-#define _TELEGRAM_FILE      "/telegram.dat"
 
 #include "CRC16.h"
 #include <TimeLib.h>  // https://github.com/PaulStoffregen/Time
@@ -88,6 +88,8 @@ bool        DSTactive;
 uint64_t    upTimeSeconds;
 
 File        telegramFile;
+char        telegramFileName[40] = {};
+uint16_t    recCount = 0;
 
 
 /*eof*/

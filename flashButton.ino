@@ -16,91 +16,92 @@ void handleFlashButton()
   //---------------------------------------------------------------
   //-------------- finite state button ----------------------------
   //---------------------------------------------------------------
-  
-  switch(btnState) 
+
+  switch(btnState)
   {
-  case BTN_INIT:
-    if (!digitalRead(_FLASH_BUTTON)) 
-    {
-      bounceTimer       = micros();
-      btnState          = BTN_FIRST_PRESS;
-    }
-    break;
-
-  case BTN_FIRST_PRESS:
-    if ((micros() - bounceTimer) > _DEBOUNCETIME) 
-    {
-      if (!digitalRead(_FLASH_BUTTON)) 
+    case BTN_INIT:
+      if (!digitalRead(_FLASH_BUTTON))
       {
-        btnState    = BTN_IS_PRESSED;
-        buttonTimer = millis();
-      } else 
-      {
-        btnState    = BTN_INIT;
+        bounceTimer       = micros();
+        btnState          = BTN_FIRST_PRESS;
       }
-    }
-    break;
+      break;
 
-  case BTN_IS_PRESSED:
-    //-- button released?
-    if (digitalRead(_FLASH_BUTTON)) 
-    {  
-      bounceTimer = micros();
-      btnState    = BTN_FIRST_RELEASE;
-    }
-    else
-    {
-      if ((millis() - buttonTimer) > _LONGPRESSTIME) 
+    case BTN_FIRST_PRESS:
+      if ((micros() - bounceTimer) > _DEBOUNCETIME)
       {
-        pressType = LONG_PRESSED;
-        oledPrintMsg(1, "LONG Pressed!      ", 0);
-      } 
-    }
-    break;
-
-  case BTN_FIRST_RELEASE:
-    if ((micros() - bounceTimer) > _DEBOUNCETIME) 
-    {
-      if (digitalRead(_FLASH_BUTTON) && (micros() - bounceTimer) > _DEBOUNCETIME) 
-      {
-        btnState    = BTN_IS_RELEASED;
-      } 
-      else 
-      {
-        btnState    = BTN_IS_PRESSED;
+        if (!digitalRead(_FLASH_BUTTON))
+        {
+          btnState    = BTN_IS_PRESSED;
+          buttonTimer = millis();
+        }
+        else
+        {
+          btnState    = BTN_INIT;
+        }
       }
-    }
-    break;
+      break;
 
-  case BTN_IS_RELEASED:
-    //aliveTimer = millis();
-    Debugf("Button Released in [%d]ms! => ", (millis()-buttonTimer));
-    if ((millis() - buttonTimer) > _LONGPRESSTIME) 
-    {
+    case BTN_IS_PRESSED:
+      //-- button released?
+      if (digitalRead(_FLASH_BUTTON))
+      {
+        bounceTimer = micros();
+        btnState    = BTN_FIRST_RELEASE;
+      }
+      else
+      {
+        if ((millis() - buttonTimer) > _LONGPRESSTIME)
+        {
+          pressType = LONG_PRESSED;
+          oledPrintMsg(1, "LONG Pressed!      ", 0);
+        }
+      }
+      break;
+
+    case BTN_FIRST_RELEASE:
+      if ((micros() - bounceTimer) > _DEBOUNCETIME)
+      {
+        if (digitalRead(_FLASH_BUTTON) && (micros() - bounceTimer) > _DEBOUNCETIME)
+        {
+          btnState    = BTN_IS_RELEASED;
+        }
+        else
+        {
+          btnState    = BTN_IS_PRESSED;
+        }
+      }
+      break;
+
+    case BTN_IS_RELEASED:
+      //aliveTimer = millis();
+      Debugf("Button Released in [%d]ms! => ", (millis()-buttonTimer));
+      if ((millis() - buttonTimer) > _LONGPRESSTIME)
+      {
         //pressType = LONG_PRESSED;
         oledPrintMsg(1, "LONG Pressed!      ", 0);
         Debugln("Long Pressed: ");
-    } 
-    else if ((millis() - buttonTimer) > _MIDPRESSTIME) 
-    {
+      }
+      else if ((millis() - buttonTimer) > _MIDPRESSTIME)
+      {
         pressType = MID_PRESSED;
         oledPrintMsg(1, "MID Pressed!      ", 0);
         Debugln("Mid Pressed: ");
-    }
-    else 
-    {
+      }
+      else
+      {
         pressType = QUICK_PRESSED;
         oledPrintMsg(1, "QUICK Pressed!      ", 0);
         Debugln("Quick Pressed: ");
-    }
-    btnState    = BTN_INIT;
-    bounceTimer = 0;
-    showBtnTimer = millis();
-    break;
+      }
+      btnState    = BTN_INIT;
+      bounceTimer = 0;
+      showBtnTimer = millis();
+      break;
 
-  default:
-    btnState    = BTN_INIT;
-    pressType   = NOT_PRESSED;
+    default:
+      btnState    = BTN_INIT;
+      pressType   = NOT_PRESSED;
 
   } // switch()
 
@@ -108,18 +109,20 @@ void handleFlashButton()
 
 //===========================================================================================
 //assumes little endian
-void printRegister(size_t const size, void const * const ptr)
+void printRegister(size_t const size, void const *const ptr)
 {
-  unsigned char *b = (unsigned char*) ptr;
+  unsigned char *b = (unsigned char *) ptr;
   unsigned char byte;
   int i, j;
   Debug(F("["));
-  for (i=size-1; i>=0; i--) {
-    for (j=7; j>=0; j--) {
+  for (i=size-1; i>=0; i--)
+  {
+    for (j=7; j>=0; j--)
+    {
       byte = (b[i] >> j) & 1;
       Debug(byte);
     }
   }
   Debug(F("] "));
-  
+
 } // printRegister()

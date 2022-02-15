@@ -1,0 +1,5 @@
+#
+#  astyle options file
+#
+-A1 -s2 -S -xW -w -Y -xg -k3 --verbose
+

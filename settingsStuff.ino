@@ -1,22 +1,24 @@
 /*
-***************************************************************************  
+***************************************************************************
 **  Program  : settingsStuff, part of DSMRloggerAPI
 **  Version  : v3.0
 **
 **  Copyright (c) 2020 Willem Aandewiel
 **
-**  TERMS OF USE: MIT License. See bottom of file.                                                            
-***************************************************************************      
+**  TERMS OF USE: MIT License. See bottom of file.
+***************************************************************************
 * 1.0.11 added Mindergas Authtoken setting
 */
 
 //=======================================================================
-void writeSettings() 
+void writeSettings()
 {
   yield();
-  Debug(F("Writing to [")); Debug(_SETTINGS_FILE); Debugln(F("] ..."));
+  Debug(F("Writing to ["));
+  Debug(_SETTINGS_FILE);
+  Debugln(F("] ..."));
   File file = FSYS.open(_SETTINGS_FILE, "w"); // open for reading and writing
-  if (!file) 
+  if (!file)
   {
     Debugf("open(%s, 'w') FAILED!!! --> Bailout\r\n", _SETTINGS_FILE);
     return;
@@ -25,42 +27,53 @@ void writeSettings()
 
   Debug(F("Start writing setting data "));
 
-  file.print("actDSMR = ");         file.println(actDSMR);           Debug(F("."));
-  file.print("actGasMBus = ");      file.println(actGasMBus);        Debug(F("."));
+  file.print("actDSMR = ");
+  file.println(actDSMR);
+  Debug(F("."));
+  file.print("telegramFileName = ");
+  file.println(telegramFileName);
+  Debug(F("."));
+  file.print("actGasMBus = ");
+  file.println(actGasMBus);
+  Debug(F("."));
 
-  file.close();  
-  
+  file.close();
+
   Debugln(F(" done"));
   Debugln(F("Wrote this:"));
-  Debug(F("actDSMR = "));         Debugln(actDSMR);
-  Debug(F("actGasMBus = "));         Debugln(actGasMBus);
-  
+  Debug(F("actDSMR = "));
+  Debugln(actDSMR);
+  Debug(F("telegramFileName = "));
+  Debugln(telegramFileName);
+  Debug(F("actGasMBus = "));
+  Debugln(actGasMBus);
+
 } // writeSettings()
 
 
 //=======================================================================
-void readSettings(bool show) 
+void readSettings(bool show)
 {
   String sTmp, nColor;
   String words[10];
-  
+
   File file;
-  
+
   Debugf(" %s ..\r\n", _SETTINGS_FILE);
 
   sprintf(actDSMR, "40");
   actGasMBus = 1;
 
-  if (!FSYS.exists(_SETTINGS_FILE)) 
+  if (!FSYS.exists(_SETTINGS_FILE))
   {
     Debugln(F(" .. file not found! --> created file!"));
     writeSettings();
   }
 
-  for (int T = 0; T < 2; T++) 
+  for (int T = 0; T < 2; T++)
   {
     file = FSYS.open(_SETTINGS_FILE, "r");
-    if (!file) 
+    if (!file)
     {
       if (T == 0) Debugf(" .. something went wrong opening [%s]\r\n", _SETTINGS_FILE);
       else        Debugln(T);
@@ -69,21 +82,24 @@ void readSettings(bool show)
   } // try T times ..
 
   Debugln(F("Reading settings:\r"));
-  while(file.available()) 
+  while(file.available())
   {
     sTmp      = file.readStringUntil('\n');
     sTmp.replace("\r", "");
     //Debugf("[%s] (%d)\r\n", sTmp.c_str(), sTmp.length());
     int8_t wc = splitString(sTmp.c_str(), '=', words, 10);
     words[0].toLowerCase();
-    nColor    = words[1].substring(0,15);
+    nColor    = words[1].substring(0, 15);
 
-    if (words[0].equalsIgnoreCase("actDSMR"))      strCopy(actDSMR, sizeof(actDSMR), words[1].c_str());
-    if (words[0].equalsIgnoreCase("actGasMBus"))   actGasMBus = words[1].toInt();  
-    
+    if (words[0].equalsIgnoreCase("actDSMR"))
+      strCopy(actDSMR, sizeof(actDSMR), words[1].c_str());
+    if (words[0].equalsIgnoreCase("telegramFileName"))
+      strCopy(telegramFileName, sizeof(telegramFileName), words[1].c_str());
+    if (words[0].equalsIgnoreCase("actGasMBus"))   actGasMBus = words[1].toInt();
+
   } // while available()
-  
-  file.close();  
+
+  file.close();
 
   Debugln(F(" .. done\r"));
 
@@ -96,7 +112,7 @@ void updateSetting(const char *field, const char *newValue)
   Debugf("-> field[%s], newValue[%s]\r\n", field, newValue);
 
   writeSettings();
-  
+
 } // updateSetting()
 
 
@@ -120,5 +136,5 @@ void updateSetting(const char *field, const char *newValue)
 * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
 * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR
 * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-* 
+*
 ***************************************************************************/
