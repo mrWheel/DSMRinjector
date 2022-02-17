@@ -1,47 +1,88 @@
 
-char    tlgrmName[10][40];
-uint8_t fnInx = 0;
 //=======================================================================
 void selectDSMRfile()
 {
-  char selChar = '*';
-  int  selInt = 255;
+  char selInput[10] = {};
+  int  maxIndx = 0, selInt = 255;
 
-  memset(tlgrmName, 0, sizeof(tlgrmName));
-  fnInx = 0;
+  Debugln("[A]  - DSMR 3+");
+  Debugln("[B]  - DSMR 42");
+  Debugln("[C]  - DSMR 5+");
+  Debugln("[D]  - DSMR 5+ BE");
 
-  listAllTelegramsInDir("/");
+  maxIndx = listAllTelegramsInDir("/");
 
-  for(int i=1; i<=fnInx; i++)
+  Debug("=> Select: ");
+
+  uint32_t waitTimer = millis();
+  int len = 0;
+  while ((millis() - waitTimer) < 5000)
   {
-    Debugf("[%d] - %s\r\n", i, tlgrmName[(i-1)]);
+    len = TelnetStream.readBytesUntil('\n', selInput, sizeof(selInput));
+    if (len > 0) break;
+  }
+  if (len > 0 && selInput[(len-1)] == '\r') selInput[(len-1)] = 0; //-- remove '\r'
+  if ((millis() - waitTimer) >= 5000)
+  {
+    Debugln(" timeout!");
+    selInt = 0;
+    return;
+  }
+  else
+  {
+    selInt = String(selInput).toInt();
+    Debugf("You selected [%s](%d) ", selInput, selInt);
   }
 
-  //-- empty buffer
-  while (TelnetStream.available())
+  if (selInt == 0 && strlen(selInput) > 0)
   {
-    TelnetStream.read();
-    yield();
-  }
-
-  selInt = -1;
-  while ((selInt < 0) || (selInt > fnInx))
-  {
-    yield();
-    Debug("\r\nSelect : ");
-    selChar = '*';
-    selInt = 255;
-    uint32_t waitForChar = millis();
-    while((millis() - 5000) < waitForChar)
+    switch(selInput[0])
     {
-      selChar = (char)TelnetStream.read();
-      selInt = ((int)selChar) - ((int)'0');
-      if (selInt > 0 && selInt <= fnInx) break;
+      case 'a':
+      case 'A':
+        sprintf(actDSMR, "30");
+        break;
+      case 'b':
+      case 'B':
+        sprintf(actDSMR, "42");
+        break;
+      case 'c':
+      case 'C':
+        sprintf(actDSMR, "50");
+        break;
+      case 'd':
+      case 'D':
+        sprintf(actDSMR, "BE");
+        break;
+      default:
+        sprintf(actDSMR, "50");
 
+    } // switch
+    if (actDSMR != savDSMR)
+    {
+      runStatus = 0;
+      memset(telegramFileName, 0, sizeof(telegramFileName));
+      telegramFile.close();
+      Debugf("\r\nYou selected DSMR profile [%s]\r\n\n", actDSMR);
+      return;
     }
-    if ((millis() - 5000) >= waitForChar) break;
-
   }
+  if (selInt > 0 && selInt <= maxIndx)
+  {
+    runStatus = 0;
+    memset(telegramFileName, 0, sizeof(telegramFileName));
+    telegramFile.close();
+    readFileName("/", selInt);
+    Debugf("=> [%s]\r\n\n", telegramFileName);
+    if (strlen(telegramFileName) > 0)
+      sprintf(actDSMR, "FS");
+    else  sprintf(actDSMR, "50");
+  }
+  else
+  {
+    return;
+  }
+  writeSettings();
 
   //-- skip rest --
   while (TelnetStream.available())
@@ -50,23 +91,14 @@ void selectDSMRfile()
     (char)TelnetStream.read();
   }
 
-  if (selInt > 0 && selInt <= fnInx)
-  {
-    Debugf("[%c]/[%d] You selected this [%s] telegramfile\r\n\n", selChar, selInt, tlgrmName[(selInt-1)]);
-    snprintf(telegramFileName, sizeof(telegramFileName), "/%s", tlgrmName[(selInt-1)]);
-    telegramFile.close();
-    sprintf(actDSMR, "FS");
-    writeSettings();
-  }
-  else  Debugln("Timeout!");
-
 } //  selectDSMRfile()
 
 
 //=======================================================================
-void listAllTelegramsInDir(const char *path)
+uint8_t listAllTelegramsInDir(const char *path)
 {
   char dirFile[40] = {};
+  int8_t fnIndx = 1;
 
   Dir dir = FSYS.openDir(path);
   while(dir.next())
@@ -76,27 +108,53 @@ void listAllTelegramsInDir(const char *path)
       // print file names
       if (dir.fileName().indexOf(".dat") != -1)
       {
-        snprintf(tlgrmName[fnInx++], sizeof(tlgrmName[fnInx]), "%s", dir.fileName().c_str());
+        //snprintf(tlgrmName[++fnInx], sizeof(tlgrmName[fnIndx]), "%s", dir.fileName().c_str());
+        Debugf("[%2d] - %s\r\n", fnIndx++, dir.fileName().c_str());
       }
     }
-    if (dir.isDirectory())
+    else if (dir.isDirectory())
     {
-      // print directory names
-      Debug("Dir: ");
-      snprintf(dirFile, sizeof(dirFile), "%s%s/", path, dir.fileName().c_str());
-      //Debugln(path + dir.fileName() + "/");
-      Debugln(dirFile);
-      // recursive file listing inside new directory
-      listAllTelegramsInDir(dirFile);
+      Debugf("DIR %s\r\n", dir.fileName().c_str());
     }
   }
+
+  //dir.close();
+
+  return fnIndx;
+
 } //  listAllTelegramsInDir()
+
+
+//=======================================================================
+void readFileName(const char *path, int fileNr)
+{
+  char dirFile[40] = {};
+  int8_t fnIndx = 0;
+
+  Dir dir = FSYS.openDir(path);
+  while(dir.next())
+  {
+    if (dir.isFile())
+    {
+      // print file names
+      if (dir.fileName().indexOf(".dat") != -1)
+      {
+        fnIndx++;
+        if (fnIndx == fileNr)
+        {
+          snprintf(telegramFileName, sizeof(telegramFileName), "%s", dir.fileName().c_str());
+          return;
+        }
+      }
+    }
+  }
+
+} //  readFileName()
 
 
 //=======================================================================
 void handleKeyInput()
 {
-  //=======================================================================
   String  slavesInfo, response;
   int16_t num;
   char    inChar;

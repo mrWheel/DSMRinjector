@@ -30,9 +30,15 @@ void writeSettings()
   file.print("actDSMR = ");
   file.println(actDSMR);
   Debug(F("."));
+
+  file.print("actInterval = ");
+  file.println(actInterval);
+  Debug(F("."));
+
   file.print("telegramFileName = ");
   file.println(telegramFileName);
   Debug(F("."));
+
   file.print("actGasMBus = ");
   file.println(actGasMBus);
   Debug(F("."));
@@ -41,12 +47,11 @@ void writeSettings()
 
   Debugln(F(" done"));
   Debugln(F("Wrote this:"));
-  Debug(F("actDSMR = "));
-  Debugln(actDSMR);
-  Debug(F("telegramFileName = "));
-  Debugln(telegramFileName);
-  Debug(F("actGasMBus = "));
-  Debugln(actGasMBus);
+  Debugf("actDSMR = [%s]\r\n", actDSMR);
+  Debugf("actInterval = [%s]\r\n", actInterval);
+  Debugf("telegramFileName = [%s]\r\n", telegramFileName);
+  Debugf("actGasMBus = [%d]\r\n", actGasMBus);
+  Debugln();
 
 } // writeSettings()
 
@@ -61,7 +66,7 @@ void readSettings(bool show)
 
   Debugf(" %s ..\r\n", _SETTINGS_FILE);
 
-  sprintf(actDSMR, "40");
+  sprintf(actDSMR, "50");
   actGasMBus = 1;
 
   if (!FSYS.exists(_SETTINGS_FILE))
@@ -93,6 +98,7 @@ void readSettings(bool show)
 
     if (words[0].equalsIgnoreCase("actDSMR"))
       strCopy(actDSMR, sizeof(actDSMR), words[1].c_str());
+    if (words[0].equalsIgnoreCase("actInterval"))   actInterval = words[1].toInt();
     if (words[0].equalsIgnoreCase("telegramFileName"))
       strCopy(telegramFileName, sizeof(telegramFileName), words[1].c_str());
     if (words[0].equalsIgnoreCase("actGasMBus"))   actGasMBus = words[1].toInt();

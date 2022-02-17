@@ -19,7 +19,6 @@ String wOut[15], wParm[10], wPair[4];
 //===========================================================================================
 void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t *payload, size_t lenght)
 {
-  //===========================================================================================
   String  wsPayload = String((char *) &payload[0]);
   char   *wsPayloadC = (char *) &payload[0];
   String  wsString;
@@ -195,6 +194,7 @@ void updateGUI()
   wsString += ", actInterval=" + String(actInterval);
   wsString += ", actGasMBus=" + String(actGasMBus);
   wsString += ", actDSMR=" + String(actDSMR);
+  wsString += ", fileName=" + String(telegramFileName);
   wsString += ", telegramCount=" + String(telegramCount);
   if (runStatus == 1) wsString += ", runStatus=1";
   else                wsString += ", runStatus=0";

@@ -13,8 +13,10 @@ unsigned int CRC16(unsigned int crc, unsigned char *buf, int len)
   {
     crc ^= (unsigned int)buf[pos];    // XOR byte into least sig. byte of crc
 
-    for (int i = 8; i != 0; i--) {    // Loop over each bit
-      if ((crc & 0x0001) != 0) {      // If the LSB is set
+    for (int i = 8; i != 0; i--)      // Loop over each bit
+    {
+      if ((crc & 0x0001) != 0)        // If the LSB is set
+      {
         crc >>= 1;                    // Shift right and XOR 0xA001
         crc ^= 0xA001;
       }

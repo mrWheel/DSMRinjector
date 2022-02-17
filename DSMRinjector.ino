@@ -11,10 +11,10 @@
 **   - Insert space padding after commas (-xg)
 **   - Attach a pointer or reference operator (-k3)
 **
-** use:  astyle -A1 -s2 -S -xW -w -Y -xg -k3 <*.ino>
+** use:  astyle <*.ino>
 **
 */
-#define _FW_VERSION "2.0 (15-02-2022)"
+#define _FW_VERSION "2.0 (17-02-2022)"
 /*
 *   Arduino-IDE settings for ESP12 (Generic):
 
@@ -42,7 +42,6 @@
 //===========================================================================================
 void callIndex_html()
 {
-  //===========================================================================================
   Serial.println("uri() => / !");
   Debugln("uri() => / !");
   httpServer.send(200, "text/html", DSMRindex_html );
@@ -53,7 +52,6 @@ void callIndex_html()
 //===========================================================================================
 void handleReBoot()
 {
-  //===========================================================================================
   String redirectHTML = "";
 
   redirectHTML += "<!DOCTYPE HTML><html lang='en-US'>";
@@ -99,7 +97,6 @@ void handleReBoot()
 //===========================================================================================
 void reloadPage(String goTo)
 {
-  //===========================================================================================
   String goToPageHTML;
   goToPageHTML += "<!DOCTYPE HTML><html lang='de'><head><meta charset='UTF-8'>";
   goToPageHTML += "<meta name= viewport content=width=device-width, initial-scale=1.0, user-scalable=yes>";
@@ -117,7 +114,6 @@ void reloadPage(String goTo)
 //=======================================================================
 int8_t splitString(String inStrng, char delimiter, String wOut[], uint8_t maxWords)
 {
-  //=======================================================================
   uint16_t inxS = 0, inxE = 0, wordCount = 0;
   inStrng.trim();
   while(inxE < inStrng.length() && wordCount < maxWords)
@@ -144,28 +140,26 @@ int8_t splitString(String inStrng, char delimiter, String wOut[], uint8_t maxWor
 //==================================================================================================
 void checkESP8266()
 {
-  //==================================================================================================
-
   uint32_t    realSize = ESP.getFlashChipRealSize();
   uint32_t    ideSize  = ESP.getFlashChipSize();
   FlashMode_t ideMode  = ESP.getFlashChipMode();
 
   Debugln("\n=============================================================");
 
-  Debugf("   Flash real id: %08X\n", ESP.getFlashChipId());
-  Debugf(" Flash real size: %u bytes\n", realSize);
-  Debugf("  Flash ide size: %u bytes\n", ideSize);
+  Debugf("   Flash real id: %08X\r\n", ESP.getFlashChipId());
+  Debugf(" Flash real size: %u bytes\r\n", realSize);
+  Debugf("  Flash ide size: %u bytes\r\n", ideSize);
 
   if (ideSize != realSize)
   {
-    Debugln(">> Flash Chip configuration wrong! <<");
+    Debugln(">> Flash Chip configuration wrong! <<\r");
   }
   else
   {
-    Debugln("Flash Chip configuration ok.");
+    Debugln("Flash Chip configuration ok.\r");
   }
-  Debugf(" Flash ide speed: %u Hz\n", ESP.getFlashChipSpeed());
-  Debugf("  Flash ide mode: %s\n", (ideMode == FM_QIO ? "QIO" : ideMode == FM_QOUT ? "QOUT" : ideMode == FM_DIO ? "DIO" : ideMode == FM_DOUT ? "DOUT" : "UNKNOWN"));
+  Debugf(" Flash ide speed: %u Hz\r\n", ESP.getFlashChipSpeed());
+  Debugf("  Flash ide mode: %s\r\n", (ideMode == FM_QIO ? "QIO" : ideMode == FM_QOUT ? "QOUT" : ideMode == FM_DIO ? "DIO" : ideMode == FM_DOUT ? "DOUT" : "UNKNOWN"));
 
   Debugf("          Timing: %s\r\n", useNTPtiming ? "use NTP" : "INTERN");
   Debugf("        Run Mode: %d", runMode);
@@ -190,22 +184,26 @@ void checkESP8266()
       Debugln(" (Unknown..)");
   }
 
-  Debugf("Minuten per stap: %d seconden\n", actSpeed);
-  Debugf("        Interval: %d seconden\n", actInterval);
-  Debugf("  gas meter MBus: %d seconden\n", actGasMBus);
+  Debugf("Minuten per stap: %d seconden\r\n", actSpeed);
+  Debugf("        Interval: %d seconden\r\n", actInterval);
+  Debugf("  gas meter MBus: %d seconden\r\n", actGasMBus);
 
-  Debugf("  DSMR standaard: %s\n", actDSMR);
+  if (!strcmp(actDSMR, "FS"))
+  {
+    Debugf("  DSMR standaard: %s [%s]\r\n", actDSMR, telegramFileName);
+  }
+  else  Debugf("  DSMR standaard: %s\r\n", actDSMR);
   Debugf("      Run Status: %d", runStatus);
   switch(runStatus)
   {
     case 0:
-      Debugln(" (geStopt)");
+      Debugln(" (geStopt)\r");
       break;
     case 1:
-      Debugln(" (Running)");
+      Debugln(" (Running)\r");
       break;
     default:
-      Debugln(" (Unknown..)");
+      Debugln(" (Unknown..)\r");
   }
 
   Debugf("Data Request pin: %s\r\n", digitalRead(_DATA_REGUEST) ? "High":"Low");
@@ -219,7 +217,6 @@ void checkESP8266()
 //==================================================================================================
 String Format(double x, int len, int d)
 {
-  //==================================================================================================
   String r;
   int rl;
 
@@ -239,7 +236,6 @@ String Format(double x, int len, int d)
 //==================================================================================================
 int FindCharInArrayRev(unsigned char array[], char c, int len)
 {
-  //==================================================================================================
   for (int16_t i = len - 1; i >= 0; i--)
   {
     if (array[i] == c)
@@ -253,7 +249,6 @@ int FindCharInArrayRev(unsigned char array[], char c, int len)
 //==================================================================================================
 int16_t decodeTelegram(int len)
 {
-  //==================================================================================================
   //need to check for start
   int startChar = FindCharInArrayRev((unsigned char *)telegram, '/', len);
   int endChar   = FindCharInArrayRev((unsigned char *)telegram, '!', len);
@@ -306,7 +301,6 @@ int16_t decodeTelegram(int len)
 //==================================================================================================
 void updateTime()
 {
-  //==================================================================================================
   if (useNTPtiming)   // NTP
   {
     //actSecond = second(ntpTime);
@@ -346,7 +340,6 @@ void updateTime()
 //==================================================================================================
 void updateMeterValues(uint8_t period)
 {
-  //==================================================================================================
   float  Factor;
   String wsString = "";
 
@@ -415,12 +408,27 @@ void updateMeterValues(uint8_t period)
   **/
   currentCRC = 0;
 
-  if (String(actDSMR) == "40")
+  if (String(actDSMR) == "42")
   {
     for (int16_t line = 0; line <= maxLines40; line++)
     {
       yield();
-      int16_t len = buildTelegram40(line, telegram);  // also: prints to DSMRsend
+      int16_t len = buildTelegram42(line, telegram);  // also: prints to DSMRsend
+      calcCRC = decodeTelegram(len);
+    }
+    Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (Verbose && ((telegramCount % 3) == 0))
+    {
+      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    }
+
+  }
+  else if (String(actDSMR) == "50")
+  {
+    for (int16_t line = 0; line <= maxLines50; line++)
+    {
+      yield();
+      int16_t len = buildTelegram50(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
     Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
@@ -474,8 +482,6 @@ void updateMeterValues(uint8_t period)
 //==================================================================================================
 void setup()
 {
-  //==================================================================================================
-
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(_SIGNAL_LED, OUTPUT);
   for (int i=0; i<20; i++)
@@ -627,8 +633,8 @@ void setup()
   actSpeed    = 5;
   actGasMBus  = 1;
   //setTime(actHour, actMinute, actSec, actDay, actMonth, actYear);
-  sprintf(actDSMR, "40");
-  sprintf(savDSMR, "40");
+  sprintf(actDSMR, "50");
+  sprintf(savDSMR, "50");
   nextGuiUpdate = millis() + 1;
 
   checkESP8266();
@@ -744,30 +750,57 @@ void loop()
     if (String(actDSMR) != String(savDSMR))
     {
       telegramFile.close(); // closing!
+      Debugln("Serial.end()..");
+      DebugFlush();
+      Serial.end();
+      delay(200);
 
       if (String(actDSMR) == "30")
       {
         sprintf(savDSMR, "30");
-        Serial.end();
-        delay(200);
         Serial.begin(9600, SERIAL_7E1);
+        while(!Serial)
+        {
+          delay(10);
+        }
+        Debugln("Serial.begin(9600, SERIAL_7E1)");
         //Serial.begin(9600);
+        delay(200);
+      }
+      else if (String(actDSMR) == "42")
+      {
+        sprintf(savDSMR, "42");
+        Serial.begin(115200);
+        while(!Serial)
+        {
+          delay(10);
+        }
+        Debugln("Serial.begin(115200)");
+        DebugFlush();
         delay(200);
       }
       else if (String(actDSMR) == "BE")
       {
         sprintf(savDSMR, "BE");
-        Serial.end();
-        delay(200);
         Serial.begin(115200);
+        while(!Serial)
+        {
+          delay(10);
+        }
+        Debugln("Serial.begin(115200)");
+        DebugFlush();
         delay(200);
       }
       else if (String(actDSMR) == "FS")
       {
         sprintf(savDSMR, "FS");
-        Serial.end();
-        delay(200);
         Serial.begin(115200);
+        while(!Serial)
+        {
+          delay(10);
+        }
+        Debugln("Serial.begin(115200)");
+        DebugFlush();
         delay(200);
         Serial.println("-> Select File!");
         Debugln("-> Select File!");
@@ -782,10 +815,14 @@ void loop()
       }
       else
       {
-        sprintf(savDSMR, "40");
-        Serial.end();
-        delay(200);
+        sprintf(savDSMR, "50");
         Serial.begin(115200);
+        while(!Serial)
+        {
+          delay(10);
+        }
+        Debugln("Serial.begin(115200)");
+        DebugFlush();
         delay(200);
       }
     }
@@ -809,7 +846,7 @@ void loop()
   //Debugf("verboseCount [%d]\r\n", verboseCount);
   if (verboseCount > 6) Verbose = false;
   digitalWrite(_SIGNAL_LED, LOW); //-- inversed
-  signalLedTimer = millis()+250;
+  signalLedTimer = millis()+150;
 
   switch(runMode)
   {

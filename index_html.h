@@ -81,11 +81,13 @@ static const char DSMRindex_html[] PROGMEM =
          <td style='width:120px;' valign='top'>DSMR standaard</td>
          <td>
              <select id='actDSMR' style='font-size:14px;' onchange='doDSMRstandard()'>
-                <option value='40'>DSMR 4.0+</option>
-                <option value='BE'>DSMR BE 5.0+</option>
                 <option value='30'>DSMR 3.0</option>
+                <option value='42'>DSMR 42</option>
+                <option value='50'>DSMR 5+</option>
+                <option value='BE'>DSMR BE 5.0+</option>
                 <option value='FS'>From File</option>
               </select>
+              &nbsp; <pre id='fileName'></pre>
          </td>
          </tr><tr>
          <td><hr></td><td style='width:300px;'><hr><td>
@@ -330,11 +332,13 @@ static const char DSMRindex_html[] PROGMEM =
     var DSMR = mySelect.options[mySelect.selectedIndex].value;
     if (DSMR == "30" )  
           webSocketConn.send("setDSMR:DSMR=30" ); 
+    else if (DSMR == "42" )  
+          webSocketConn.send("setDSMR:DSMR=42" ); 
     else if (DSMR == "BE" )  
           webSocketConn.send("setDSMR:DSMR=BE" ); 
     else if (DSMR == "FS" ) 
           webSocketConn.send("setDSMR:DSMR=FS" ); 
-    else  webSocketConn.send("setDSMR:DSMR=40" ); 
+    else  webSocketConn.send("setDSMR:DSMR=50" ); 
   };
   
 </script>
