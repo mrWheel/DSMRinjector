@@ -43,14 +43,19 @@ void writeSettings()
   file.println(actGasMBus);
   Debug(F("."));
 
+  file.print("skipChecksum = ");
+  file.println(skipChecksum ? "true" : "false");
+  Debug(F("."));
+
   file.close();
 
   Debugln(F(" done"));
   Debugln(F("Wrote this:"));
   Debugf("actDSMR = [%s]\r\n", actDSMR);
-  Debugf("actInterval = [%s]\r\n", actInterval);
+  Debugf("actInterval = [%d]\r\n", actInterval);
   Debugf("telegramFileName = [%s]\r\n", telegramFileName);
   Debugf("actGasMBus = [%d]\r\n", actGasMBus);
+  Debugf("skipChecksum = [%s]\r\n", skipChecksum ? "true" : "false");
   Debugln();
 
 } // writeSettings()
@@ -98,10 +103,15 @@ void readSettings(bool show)
 
     if (words[0].equalsIgnoreCase("actDSMR"))
       strCopy(actDSMR, sizeof(actDSMR), words[1].c_str());
-    if (words[0].equalsIgnoreCase("actInterval"))   actInterval = words[1].toInt();
+    if (words[0].equalsIgnoreCase("actInterval"))  actInterval = words[1].toInt();
     if (words[0].equalsIgnoreCase("telegramFileName"))
       strCopy(telegramFileName, sizeof(telegramFileName), words[1].c_str());
-    if (words[0].equalsIgnoreCase("actGasMBus"))   actGasMBus = words[1].toInt();
+    if (words[0].equalsIgnoreCase("actGasMBus"))   actGasMBus  = words[1].toInt();
+    if (words[0].equalsIgnoreCase("skipChecksum")) 
+    {
+      if (words[1] == "true") skipChecksum  = true;
+      else                    skipChecksum  = false;
+    }
 
   } // while available()
 

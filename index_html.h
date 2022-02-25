@@ -88,7 +88,14 @@ static const char DSMRindex_html[] PROGMEM =
                 <option value='FS'>From File</option>
               </select>
               &nbsp; <pre id='fileName'></pre>
-         </td>
+          </td>
+          </tr><tr>
+           <td>skip Checksum</td>
+           <td><input id='skipChecksum' type='checkbox' style='font-size:14px;' 
+                     name='skipChecksuum'  
+                     onchange='validateField( "skipChecksum" )'>
+
+           </td>
          </tr><tr>
          <td><hr></td><td style='width:300px;'><hr><td>
          </tr><tr>
@@ -152,7 +159,8 @@ static const char DSMRindex_html[] PROGMEM =
   let onePair;
 
   window.onload=bootsTrap;
-  window.onfocus = function() {
+  window.onfocus = function() 
+  {
     if (needReload) {
       window.location.reload(true);
     }
@@ -176,38 +184,45 @@ static const char DSMRindex_html[] PROGMEM =
   webSocketConn = new WebSocket( 'ws://'+location.host+':81/', ['arduino'] );
   console.log( "WebSocket('ws://"+location.host+":81/', ['arduino']) " );
   
-  webSocketConn.onopen    = function () { 
+  webSocketConn.onopen    = function () 
+  { 
     console.log( "Connected!" );
     webSocketConn.send('Connect ' + new Date()); 
     console.log( "getDevInfo" );
     webSocketConn.send( "getDevInfo" );
+    console.log( "getSkipChecksum" );
+    webSocketConn.send( "getSkipChecksum" );
     needReload  = false;
 
   }; 
   
-  webSocketConn.onclose     = function () { 
+  webSocketConn.onclose     = function () 
+  { 
     console.log( " " );
     console.log( "Disconnected!" );
     console.log( " " );
     needReload  = true;
     let redirectButton = "<p></p><hr><p></p><p></p>"; 
-    redirectButton    += "<style='font-size: 50px;'>Disconneted from DSMR injector2"; 
+    redirectButton    += "<style='font-size: 50px;'>Disconnected from DSMR injector"; 
     redirectButton    += "<input type='submit' value='re-Connect' "; 
     redirectButton    += " onclick='window.location=\"/\";' />  ";     
     redirectButton    += "<p></p><p></p><hr><p></p>"; 
     document.getElementById( "Actual" ).innerHTML = redirectButton;
 
   }; 
-  webSocketConn.onerror   = function (error)  { 
+  webSocketConn.onerror   = function (error)  
+  { 
     console.log( "Error: " + error);
     console.log('WebSocket Error ', error);
   };
-  webSocketConn.onmessage = function (e) {
+  webSocketConn.onmessage = function (e) 
+  {
     needReload = false;
     parsePayload(e.data); 
   };
 
-  function parsePayload(payload) {
+  function parsePayload(payload) 
+  {
     console.log( "parsePayload["+payload+"]" );
 
     singlePair   = payload.split("," );
@@ -246,7 +261,7 @@ static const char DSMRindex_html[] PROGMEM =
             document.getElementById(onePair[0].trim()).value = onePair[1].trim();
             var radios = document.getElementsByName( "runStatus" );
             if (radios[1].checked) // running
-                  document.getElementById("actDSMR").disabled=true;
+                  document.getElementById("actDSMR").disabled=false;  //--aaw-
             else  document.getElementById("actDSMR").disabled=false;
           } 
           else 
@@ -258,28 +273,56 @@ static const char DSMRindex_html[] PROGMEM =
           //console.log("Just got new value's, actHour["+document.getElementById('actHour').value+"]" );  
         }
     }
+    else if (msgType[1] == "skipChecksum" ) 
+    {
+        console.log("skipChecksum: "+payload);
+        for ( var i = 1; i < singlePair.length; i++ ) 
+        {
+          onePair = singlePair[i].split("=");
+          console.log("set["+onePair[0].trim()+"] to["+onePair[1].trim()+"]" );
+          if (onePair[0].trim() == "skipChecksum" ) 
+          {
+            console.log("skipChecksum["+onePair[1].trim()+"]" );
+            var nChecksum = onePair[1].trim();
+            if (nChecksum == "1" || nChecksum == "true")
+                  document.getElementById("skipChecksum").checked = true;
+            else  document.getElementById("skipChecksum").checked = false;
+          }
+        } //  for ..
+    }
   };
 
   
-  function validateField(field) {
-    console.log(" validateField(): ["+field+"]" );
-    var newYear     = document.getElementById('actYear').value;  
-    var newMonth    = document.getElementById('actMonth').value;  
-    var newDay      = document.getElementById('actDay').value;  
-    var newHour     = document.getElementById('actHour').value;  
-    var newSpeed    = document.getElementById('actSpeed').value;  
-    var newInterval = document.getElementById('actInterval').value;  
-    var newGasMBus  = document.getElementById('actGasMBus').value;  
-    console.log("newDate:newYear="+newYear+",newMonth="+newMonth+",newDay="+newDay+",newHour="+newHour+",newSpeed="+newSpeed);
-    webSocketConn.send("newDate:newYear="+newYear+",newMonth="+newMonth
+  function validateField(field) 
+  {
+      console.log(" validateField(): ["+field+"]" );
+    if (field == "skipChecksum")
+    {
+      var nField = document.getElementById(field).checked;  
+      console.log("setChecksum:newChecksum="+nField);
+      webSocketConn.send("setChecksum:newChecksum="+nField);
+    }
+    else
+    {
+      var newYear     = document.getElementById('actYear').value;  
+      var newMonth    = document.getElementById('actMonth').value;  
+      var newDay      = document.getElementById('actDay').value;  
+      var newHour     = document.getElementById('actHour').value;  
+      var newSpeed    = document.getElementById('actSpeed').value;  
+      var newInterval = document.getElementById('actInterval').value;  
+      var newGasMBus  = document.getElementById('actGasMBus').value;  
+      console.log("newDate:newYear="+newYear+",newMonth="+newMonth+",newDay="+newDay+",newHour="+newHour+",newSpeed="+newSpeed);
+      webSocketConn.send("newDate:newYear="+newYear+",newMonth="+newMonth
                              +",newDay="+newDay+",newHour="+newHour
                              +",newSpeed="+newSpeed+",newInterval="+newInterval
                              +",newGasMBus="+newGasMBus);
+    }
     
   };  // validateField()
 
   
-  function doRunMode(action) {
+  function doRunMode(action) 
+  {
     console.log(" doRunMode(): ["+action+"]" );
     var radios = document.getElementsByName(action);
     for (var i = 0, length = radios.length; i < length; i++) {
@@ -306,7 +349,8 @@ static const char DSMRindex_html[] PROGMEM =
     }
   };  // doRunMode()
   
-  function doTiming() {
+  function doTiming() 
+  {
     var mySelect = document.getElementById('actTiming');
     var TIMING = mySelect.options[mySelect.selectedIndex].value;
     if (TIMING == "INTERN" )  
@@ -327,7 +371,8 @@ static const char DSMRindex_html[] PROGMEM =
     }
   };
   
-  function doDSMRstandard() {
+  function doDSMRstandard() 
+  {
     var mySelect = document.getElementById('actDSMR');
     var DSMR = mySelect.options[mySelect.selectedIndex].value;
     if (DSMR == "30" )  

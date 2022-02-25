@@ -65,6 +65,17 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t *payload, size_t le
         webSocket.sendTXT(wsClient, "msgType=devInfo" + wsString);
 
       }
+      if (wsPayload.indexOf("getSkipChecksum") > -1)
+      {
+        wsString  = "";
+        wsString += ", skipChecksum=";
+        if (skipChecksum) wsString += "true";
+        else              wsString += "false";
+
+        DebugTln(wsString);
+        webSocket.sendTXT(wsClient, "msgType=skipChecksum" + wsString);
+
+      }
       else if (wsPayload.indexOf("newDate") > -1)
       {
         int8_t wc = splitString(wsPayload.c_str(), ':', wOut, 10);
@@ -166,6 +177,18 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t *payload, size_t le
         //DebugTf("DSMR standaard [%s]\n", actDSMR);
 
       }
+      else if (wsPayload.indexOf("setChecksum") > -1)
+      {
+        int8_t wc = splitString(wsPayload.c_str(), ':', wOut, 14);
+        DebugTf("wOut[1] => [%s]\n", wOut[1].c_str());
+        wc = splitString(wOut[1].c_str(), '=', wParm, 10);
+        //DebugTf("wOut[1][%s] => [%s]=[%s]\n", wOut[1].c_str(), wParm[0].c_str(), wParm[1].c_str());
+        if (wParm[1] == "true")
+              skipChecksum = true;
+        else  skipChecksum = false;
+        writeSettings();
+
+      }
 
       break;
 
@@ -194,7 +217,9 @@ void updateGUI()
   wsString += ", actInterval=" + String(actInterval);
   wsString += ", actGasMBus=" + String(actGasMBus);
   wsString += ", actDSMR=" + String(actDSMR);
-  wsString += ", fileName=" + String(telegramFileName);
+  if (!strcmp(actDSMR, "FS"))
+        wsString += ", fileName=" + String(telegramFileName);
+  else  wsString += ", fileName=-";
   wsString += ", telegramCount=" + String(telegramCount);
   if (runStatus == 1) wsString += ", runStatus=1";
   else                wsString += ", runStatus=0";

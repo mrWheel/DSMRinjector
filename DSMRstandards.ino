@@ -132,84 +132,75 @@ int16_t buildTelegram42(int16_t line, char telegram[])
     case 22:  // Text message max 2048 characters
       sprintf(telegram, "0-0:96.13.0()\r\n", val);
       break;
-    case 23:  // Instantaneous voltage L1 in 0.1V resolution
-      sprintf(telegram, "1-0:32.7.0(%5.1f*V)\r\n", (float)(random(219, 240) + (random(-30, 30)/10.0)));
-      break;
-    case 24:  // Instantaneous voltage L1 in 0.1V resolution
-      sprintf(telegram, "1-0:52.7.0(%5.1f*V)\r\n", (float)(random(221, 230) + (random(-30, 30)/10.0)));
-      break;
-    case 25:  // Instantaneous voltage L1 in 0.1V resolution
-      sprintf(telegram, "1-0:72.7.0(%5.1f*V)\r\n", (float)(random(223, 240) + (random(-30, 30)/10.0)));
-      break;
-    case 26:  // Instantaneous current L1 in A resolution
+    case 23:  // Instantaneous current L1 in A resolution
       sprintf(telegram, "1-0:31.7.0(%03d*A)\r\n", random(1, 5));
       break;
-    case 27:  // Instantaneous current L2 in A resolution
+    case 24:  // Instantaneous current L2 in A resolution
       sprintf(telegram, "1-0:51.7.0(%03d*A)\r\n", random(0, 4));
       break;
-    case 28:  // Instantaneous current L3 in A resolution
+    case 25:  // Instantaneous current L3 in A resolution
       sprintf(telegram, "1-0:71.7.0(%03d*A)\r\n", random(0, 4));
       break;
 
-    case 29:  // Instantaneous active power L1 (+P) in W resolution
+    case 26:  // Instantaneous active power L1 (+P) in W resolution
       sprintf(telegram, "1-0:21.7.0(%s*kW)\r\n", Format(IPD_l1, 6, 3).c_str());
       break;
-    case 30:  // Instantaneous active power L2 (+P) in W resolution
+    case 27:  // Instantaneous active power L2 (+P) in W resolution
       sprintf(telegram, "1-0:41.7.0(%s*kW)\r\n", Format(IPD_l2, 6, 3).c_str());
       break;
-    case 31:  // Instantaneous active power L3 (+P) in W resolution
+    case 28:  // Instantaneous active power L3 (+P) in W resolution
       sprintf(telegram, "1-0:61.7.0(%s*kW)\r\n", Format(IPD_l3, 6, 3).c_str());
       break;
 
-    case 32:  // Instantaneous active power L1 (-P) in W resolution
+    case 29:  // Instantaneous active power L1 (-P) in W resolution
       sprintf(telegram, "1-0:22.7.0(%s*kW)\r\n", Format(IPR_l1, 6, 3).c_str());
       break;
-    case 33:  // Instantaneous active power L2 (-P) in W resolution
+    case 30:  // Instantaneous active power L2 (-P) in W resolution
       sprintf(telegram, "1-0:42.7.0(%s*kW)\r\n", Format(IPR_l2, 6, 3).c_str());
       break;
-    case 34:  // Instantaneous active power L3 (-P) in W resolution
+    case 31:  // Instantaneous active power L3 (-P) in W resolution
       sprintf(telegram, "1-0:62.7.0(%s*kW)\r\n", Format(IPR_l3, 6, 3).c_str());
       break;
 
-    case 35:  // Gas Device-Type
+    case 32:  // Gas Device-Type
       sprintf(telegram, "0-%d:24.1.0(003)\r\n", actGasMBus, val);
       break;
-    case 36:  // Equipment identifier (Gas)
+    case 33:  // Equipment identifier (Gas)
       sprintf(telegram, "0-%d:96.1.0(4730303339303031363532303530323136)\r\n", actGasMBus, val);
       break;
-    case 37:  //  0-n:24.4.0(1) - gas_valve_position
+    case 34:  //  0-n:24.4.0(1) - gas_valve_position
       sprintf(telegram, "0-%d:24.4.0(%1d)\r\n", actGasMBus, (telegramCount%2));
       break;
-    case 38:  // Last 5-minute value (temperature converted), gas delivered to client
+    case 35:  // Last 5-minute value (temperature converted), gas delivered to client
       // in m3, including decimal values and capture time (Note: 4.x spec has
       sprintf(telegram, "0-%d:24.2.1(%02d%02d%02d%02d%02d01S)(%s*m3)\r\n", actGasMBus
               , (year() - 2000), month(), day(), hour(), minute()
               , Format(GDelivered, 9, 3).c_str());
       break;
 
-    case 39:  // [4] Device-Type
+    case 36:  // [4] Device-Type
       sprintf(telegram, "0-4:24.1.0(005)\r\n", val);
       break;
-    case 40:  // Equipment identifier [4]
+    case 37:  // Equipment identifier [4]
       sprintf(telegram, "0-4:96.1.0(4730303339303031344444444444444444)\r\n", val);
       break;
-    case 41:  //  0-4:24.4.0(1) - spare [4] valve_position
+    case 38:  //  0-4:24.4.0(1) - spare [4] valve_position
       sprintf(telegram, "0-4:24.4.0(%1d)\r\n", (telegramCount%2));
       break;
-    case 42:  // [4]
+    case 39:  // [4]
       sprintf(telegram, "0-4:24.2.1(%02d%02d%02d%02d%02d01S)(%s*GJ)\r\n", (year() - 2000), month(), day(), hour(), minute(),
               Format((GDelivered / 5), 9, 3).c_str());
       break;
 
-    case 43:
+    case 40:
       sprintf(telegram, "!xxxx\r\n");
       break;
 
   } // switch(line)
 
-  maxLines40 = 43;
+  maxLines42 = 40;
 
-  if (line < maxLines40)
+  if (line < maxLines42)
   {
     Serial.print(telegram); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
@@ -886,7 +877,9 @@ void readTelegramFromFile(char *tlgrmFileName)
     }
     if (telegramEnd)
     {
-      Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      if (skipChecksum)
+            Serial.printf("!\r\n\r\n");
+      else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
     else
     {

@@ -60,7 +60,7 @@ void selectDSMRfile()
     } // switch
     if (actDSMR != savDSMR)
     {
-      runStatus = 0;
+      //--aaw-runStatus = 0;
       memset(telegramFileName, 0, sizeof(telegramFileName));
       telegramFile.close();
       Debugf("\r\nYou selected DSMR profile [%s]\r\n\n", actDSMR);
@@ -69,7 +69,7 @@ void selectDSMRfile()
   }
   if (selInt > 0 && selInt <= maxIndx)
   {
-    runStatus = 0;
+    //--aaw-runStatus = 0;
     memset(telegramFileName, 0, sizeof(telegramFileName));
     telegramFile.close();
     readFileName("/", selInt);
@@ -173,7 +173,7 @@ void handleKeyInput()
     {
       case 'b':
       case 'B':
-        checkESP8266();
+        showBoardInfo();
         break;
       case 'D':
         selectDSMRfile();

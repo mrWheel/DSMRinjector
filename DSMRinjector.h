@@ -1,13 +1,13 @@
 
 
 //-- longest normal line (0-9:96.13.1) is 2048 char (+3 for \r\n\0)
-#define MAXLINELENGTH   2051
-#define _HOSTNAME       "DSMRinjector"
-#define _SIGNAL_LED      14
-#define _DATA_REGUEST    12
-#define _FLASH_BUTTON      0
+#define MAXLINELENGTH     2051
+#define _HOSTNAME         "DSMRinjector"
+#define _SIGNAL_LED       14
+#define _DATA_REGUEST     13
+#define _FLASH_BUTTON     0
 #define _SHOW_BTN_TIME    2000
-#define _SETTINGS_FILE      "/DSMRsettings.ini"
+#define _SETTINGS_FILE    "/DSMRsettings.ini"
 
 #include "CRC16.h"
 //-- https://github.com/PaulStoffregen/Time
@@ -78,7 +78,7 @@ float       GDelivered;
 bool        Verbose = false;
 int8_t      verboseCount = 0;
 char        cTimeStamp[25];
-uint16_t    maxLines40, maxLines50, maxLinesBE, maxLines30;
+uint16_t    maxLines42, maxLines50, maxLinesBE, maxLines30;
 uint8_t     btnState = 0;
 uint32_t    interTimer, bounceTimer, buttonTimer, aliveTimer;
 uint32_t    showBtnTimer;
@@ -94,6 +94,7 @@ uint64_t    upTimeSeconds;
 File        telegramFile;
 char        telegramFileName[40] = {};
 uint16_t    recCount = 0;
+bool        skipChecksum = false;
 
 
 /*eof*/

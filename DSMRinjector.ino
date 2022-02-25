@@ -1,22 +1,10 @@
 /*
 ** DSMRinjector v2.0
 **
-** Formatting ( http://astyle.sourceforge.net/astyle.html#_Quick_Start )
-**   - Allman style (-A1)
-**   - tab 2 spaces (-s2)
-**   - Indent 'switch' blocks (-S)
-**   - Indent preprocessor blocks (-xW)
-**   - Indent multi-line preprocessor definitions ending with a backslash (-w)
-**   - Indent C++ comments beginning in column one (-Y)
-**   - Insert space padding after commas (-xg)
-**   - Attach a pointer or reference operator (-k3)
-**
-** use:  astyle <*.ino>
-**
 */
-#define _FW_VERSION "2.0 (17-02-2022)"
+#define _FW_VERSION "2.0 (25-02-2022)"
 /*
-*   Arduino-IDE settings for ESP12 (Generic):
+   Arduino-IDE settings for ESP12 (Generic):
 
     - Board: "Generic ESP8266 Module"
     - Flash mode: "DOUT"
@@ -34,6 +22,19 @@
     - Erase Flash: "Only Sketch"
     - Port: "?"
 
+**
+** Formatting ( http://astyle.sourceforge.net/astyle.html#_Quick_Start )
+**   - Allman style (-A1)
+**   - tab 2 spaces (-s2)
+**   - Indent 'switch' blocks (-S)
+**   - Indent preprocessor blocks (-xW)
+**   - Indent multi-line preprocessor definitions ending with a backslash (-w)
+**   - Indent C++ comments beginning in column one (-Y)
+**   - Insert space padding after commas (-xg)
+**   - Attach a pointer or reference operator (-k3)
+**
+** use:  astyle <*.ino>
+**
 */
 
 #include "DSMRinjector.h"
@@ -138,7 +139,7 @@ int8_t splitString(String inStrng, char delimiter, String wOut[], uint8_t maxWor
 
 
 //==================================================================================================
-void checkESP8266()
+void showBoardInfo()
 {
   uint32_t    realSize = ESP.getFlashChipRealSize();
   uint32_t    ideSize  = ESP.getFlashChipSize();
@@ -193,6 +194,7 @@ void checkESP8266()
     Debugf("  DSMR standaard: %s [%s]\r\n", actDSMR, telegramFileName);
   }
   else  Debugf("  DSMR standaard: %s\r\n", actDSMR);
+  Debugf("        Checksum: %s\r\n", skipChecksum ? "Skip": "Check");
   Debugf("      Run Status: %d", runStatus);
   switch(runStatus)
   {
@@ -211,7 +213,7 @@ void checkESP8266()
   Debugln("=============================================================\n");
   nextESPcheck = millis() + 1200000;
 
-} // checkESP8266()
+} // showBoardInfo()
 
 
 //==================================================================================================
@@ -410,16 +412,20 @@ void updateMeterValues(uint8_t period)
 
   if (String(actDSMR) == "42")
   {
-    for (int16_t line = 0; line <= maxLines40; line++)
+    for (int16_t line = 0; line <= maxLines42; line++)
     {
       yield();
       int16_t len = buildTelegram42(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
-    Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (skipChecksum)
+          Serial.printf("!\r\n\r\n");
+    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
-      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      if (skipChecksum)
+            Debug("!\r\n\r\n");
+      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
 
   }
@@ -431,10 +437,15 @@ void updateMeterValues(uint8_t period)
       int16_t len = buildTelegram50(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
-    Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    //Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (skipChecksum)
+          Serial.printf("!\r\n\r\n");
+    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
-      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      if (skipChecksum)
+            Debug("!\r\n\r\n");
+      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
 
   }
@@ -446,10 +457,14 @@ void updateMeterValues(uint8_t period)
       int16_t len = buildTelegramBE(line, telegram);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
-    Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    if (skipChecksum)
+          Serial.printf("!\r\n\r\n");
+    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
-      Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      if (skipChecksum)
+            Debug("!\r\n\r\n");
+      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
 
   }
@@ -637,7 +652,7 @@ void setup()
   sprintf(savDSMR, "50");
   nextGuiUpdate = millis() + 1;
 
-  checkESP8266();
+  showBoardInfo();
 
   randomSeed(analogRead(0));
 
@@ -727,7 +742,7 @@ void loop()
 
   if (millis() > nextESPcheck)
   {
-    checkESP8266();
+    showBoardInfo();
   }
 
   if (millis() > nextGuiUpdate)
@@ -745,8 +760,11 @@ void loop()
     digitalWrite(LED_BUILTIN, HIGH);
   else  digitalWrite(LED_BUILTIN, LOW);
 
-  if (runStatus == 0)
-  {
+    //-- FS selected, but no file to use 
+    if (!strcmp(actDSMR, "FS") && strlen(telegramFileName) == 0)
+    {
+      sprintf(actDSMR, "50");
+    }
     if (String(actDSMR) != String(savDSMR))
     {
       telegramFile.close(); // closing!
@@ -826,9 +844,9 @@ void loop()
         delay(200);
       }
     }
-    return;   // Stopped, nothing to do!
-  }
 
+  //-- not running, so nothing to do
+  if (runStatus == 0) return; 
 
   if (digitalRead(_DATA_REGUEST))
   {
@@ -859,7 +877,7 @@ void loop()
       actMinute = minute();
       actSec    = 1;
       setTime(actHour, actMinute, 1, actDay, actMonth, actYear);
-      checkESP8266();
+      showBoardInfo();
       nextTelegram = millis() + (actInterval * 1000);
       runMode = SNormal;
       break;
@@ -885,7 +903,7 @@ void loop()
       actMonth++;
       actMinute++;
       updateTime();
-      checkESP8266();
+      showBoardInfo();
       nextTelegram = millis() + (actInterval * 1000);
       break;
 

@@ -6,6 +6,7 @@ void configModeCallback (WiFiManager *myWiFiManager)
   DebugTln(F("Entered config mode\r"));
   DebugTln(WiFi.softAPIP().toString());
   //if you used auto generated SSID, print it
+  yield();
   DebugTln(myWiFiManager->getConfigPortalSSID());
 
 } // configModeCallback()
@@ -16,12 +17,13 @@ void startWiFi(const char *hostname)
 {
   WiFiManager manageWiFi;
 
-  String thisAP = String(hostname) + "-" + WiFi.macAddress();
+  //--String thisAP = String(hostname) + "-" + WiFi.macAddress();
+  String thisAP = "Injector-" + WiFi.macAddress().substring(9);
 
   manageWiFi.setDebugOutput(true);
 
   //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
-  //--aaw--manageWiFi.setAPCallback(configModeCallback);
+  manageWiFi.setAPCallback(configModeCallback);
 
   //---sets timeout until configuration portal gets turned off
   //useful to make it all retry or go to sleep in seconds
@@ -29,10 +31,10 @@ void startWiFi(const char *hostname)
 
   //fetches ssid and pass and tries to connect
   //if it does not connect it starts an access point with the specified name
-  //here  "DSMR-WS-<MAC>"
+  //here  "Injector-<MAC>"
   //and goes into a blocking loop awaiting configuration
-  //if (!manageWiFi.autoConnect(thisAP.c_str()))
-  if (!manageWiFi.autoConnect(String(hostname).c_str()))
+  if (!manageWiFi.autoConnect(thisAP.c_str()))
+  //if (!manageWiFi.autoConnect(String(hostname).c_str()))
   {
     DebugTln(F("failed to connect and hit timeout"));
 
