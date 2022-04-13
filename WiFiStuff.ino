@@ -3,6 +3,10 @@
 //===========================================================================================
 void configModeCallback (WiFiManager *myWiFiManager)
 {
+  oledPrintMsg(0, "==== AP MODE ====",1);
+  String thisAP = "Injector-" + WiFi.macAddress().substring(12);
+  oledPrintMsg(1, thisAP,1);
+
   DebugTln(F("Entered config mode\r"));
   DebugTln(WiFi.softAPIP().toString());
   //if you used auto generated SSID, print it
@@ -15,10 +19,11 @@ void configModeCallback (WiFiManager *myWiFiManager)
 //===========================================================================================
 void startWiFi(const char *hostname)
 {
+  WiFi.mode(WIFI_STA);  //-- to prevent crashes?!
   WiFiManager manageWiFi;
-
+  
   //--String thisAP = String(hostname) + "-" + WiFi.macAddress();
-  String thisAP = "Injector-" + WiFi.macAddress().substring(9);
+  String thisAP = "Injector-" + WiFi.macAddress().substring(12);
 
   manageWiFi.setDebugOutput(true);
 
@@ -37,7 +42,7 @@ void startWiFi(const char *hostname)
   //if (!manageWiFi.autoConnect(String(hostname).c_str()))
   {
     DebugTln(F("failed to connect and hit timeout"));
-
+    TelnetStream.stop();
     //reset and try again, or maybe put it to deep sleep
     delay(3000);
     ESP.reset();

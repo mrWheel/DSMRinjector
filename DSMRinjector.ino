@@ -2,7 +2,7 @@
 ** DSMRinjector v2.0
 **
 */
-#define _FW_VERSION "2.0 (25-02-2022)"
+#define _FW_VERSION "2.0 (13-04-2022)"
 /*
    Arduino-IDE settings for ESP12 (Generic):
 

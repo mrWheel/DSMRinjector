@@ -191,20 +191,32 @@ void handleKeyInput()
         Debugln("\n==========================================");
         Debugln("      R E B O O T   R E Q U E ST E D");
         Debugln("==========================================");
+        oledPrintMsg(0, "==== RE-BOOT ====",1);
+        DebugFlush();
+        TelnetStream.stop();
         delay(2000);
-        ESP.reset();
+        ESP.restart();
+        delay(5000);
         break;
-      /*
-            case 'W':     { WiFiManager manageWiFi;
-                            DebugTln("**============================**");
-                            DebugTln("** RESETTING WIFI CREDENTIALS **");
-                            DebugTln("**============================**");
-                            DebugFlush();
-                            manageWiFi.resetSettings();
-                            ESP.reset();
-                          }
-                          break;
-      */
+      case 'W':     
+        { 
+          WiFiManager manageWiFi;
+          DebugTln("**============================**");
+          DebugTln("** RESETTING WIFI CREDENTIALS **");
+          DebugTln("**         AND REBOOT         **");
+          DebugTln("**============================**");
+          DebugFlush();
+          oledPrintMsg(0, "==== RE-BOOT ====",1);
+          manageWiFi.resetSettings();
+          DebugTln("**         R E B O O T        **");
+          DebugFlush();
+          TelnetStream.stop();
+          delay(2000);
+          ESP.reset();
+          delay(5000);
+        }
+        break;
+ 
       default:
         Debugln("\nCommandos are:\r\n");
         Debugln("   B - Board, Build info & system status\r");
