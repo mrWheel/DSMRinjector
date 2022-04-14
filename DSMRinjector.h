@@ -52,8 +52,8 @@ uint8_t runStatus = 1;
 char telegram[MAXLINELENGTH];
 
 
-char ssid[] = "AandeWiFi";      // your network SSID (name)
-char password[] = "3741TS12tl"; // your network key
+//char ssid[] = "AandeWiFi";      // your network SSID (name)
+//char password[] = "3741TS12tl"; // your network key
 
 char        cMsg[150], fChar[10];
 String      lastReset           = "";
