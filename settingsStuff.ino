@@ -47,6 +47,10 @@ void writeSettings()
   file.println(skipChecksum ? "true" : "false");
   Debug(F("."));
 
+  file.print("ignoreDTR = ");
+  file.println(ignoreDTR ? "true" : "false");
+  Debug(F("."));
+  
   file.close();
 
   Debugln(F(" done"));
@@ -56,6 +60,7 @@ void writeSettings()
   Debugf("telegramFileName = [%s]\r\n", telegramFileName);
   Debugf("actGasMBus = [%d]\r\n", actGasMBus);
   Debugf("skipChecksum = [%s]\r\n", skipChecksum ? "true" : "false");
+  Debugf("ignoreDTR = [%s]\r\n", ignoreDTR ? "true" : "false");
   Debugln();
 
 } // writeSettings()
@@ -111,6 +116,11 @@ void readSettings(bool show)
     {
       if (words[1] == "true") skipChecksum  = true;
       else                    skipChecksum  = false;
+    }
+    if (words[0].equalsIgnoreCase("ignoreDTR")) 
+    {
+      if (words[1] == "true") ignoreDTR  = true;
+      else                    ignoreDTR  = false;
     }
 
   } // while available()

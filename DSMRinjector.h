@@ -3,9 +3,9 @@
 //-- longest normal line (0-9:96.13.1) is 2048 char (+3 for \r\n\0)
 #define MAXLINELENGTH     2051
 #define _HOSTNAME         "DSMRinjector"
-#define _SIGNAL_LED       14
-#define _DATA_REGUEST     13
-#define _FLASH_BUTTON     0
+#define _SIGNAL_LED       15  // D8
+#define _DATA_REGUEST     12  // D6
+#define _FLASH_BUTTON     0   // D3
 #define _SHOW_BTN_TIME    2000
 #define _SETTINGS_FILE    "/DSMRsettings.ini"
 
@@ -95,6 +95,7 @@ File        telegramFile;
 char        telegramFileName[40] = {};
 uint16_t    recCount = 0;
 bool        skipChecksum = false;
+bool        ignoreDTR = false;
 
 
 /*eof*/

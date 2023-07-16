@@ -19,7 +19,7 @@ static const char UpdateServerIndex[] PROGMEM =
       <hr>
       <br/><font color='red'>Let op!!!</font>
       <br/>Bij het flashen van het LittleFS raakt u de aanwezige bestanden kwijt. 
-      <br/>Maak daarom eerst een kopie van deze bestanden (met de FSmanager) 
+      <br/>Maak daarom eerst een kopie van deze bestanden (met de littleFSmanager) 
       <br/>en zet de data-bestanden na het flashen van LittleFS weer terug.
       <hr>
       <br/>

@@ -2,7 +2,7 @@
 ** DSMRinjector v2.0
 **
 */
-#define _FW_VERSION "2.0 (13-04-2022)"
+#define _FW_VERSION "2.1 (16-07-2023)"
 /*
    Arduino-IDE settings for ESP12 (Generic):
 
@@ -209,6 +209,7 @@ void showBoardInfo()
   }
 
   Debugf("Data Request pin: %s\r\n", digitalRead(_DATA_REGUEST) ? "High":"Low");
+  Debugf("      Ignore DTR: %s\r\n", ignoreDTR ? "True" : "False");
 
   Debugln("=============================================================\n");
   nextESPcheck = millis() + 1200000;
@@ -419,8 +420,8 @@ void updateMeterValues(uint8_t period)
       calcCRC = decodeTelegram(len);
     }
     if (skipChecksum)
-          Serial.printf("!\r\n\r\n");
-    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+          Serial1.printf("!\r\n\r\n");
+    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (skipChecksum)
@@ -431,6 +432,8 @@ void updateMeterValues(uint8_t period)
   }
   else if (String(actDSMR) == "50")
   {
+    //-- some "leadIn chars" ...
+    Serial1.printf("\r\n\r\n");
     for (int16_t line = 0; line <= maxLines50; line++)
     {
       yield();
@@ -439,8 +442,8 @@ void updateMeterValues(uint8_t period)
     }
     //Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (skipChecksum)
-          Serial.printf("!\r\n\r\n");
-    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+          Serial1.printf("!\r\n\r\n");
+    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (skipChecksum)
@@ -458,8 +461,8 @@ void updateMeterValues(uint8_t period)
       calcCRC = decodeTelegram(len);
     }
     if (skipChecksum)
-          Serial.printf("!\r\n\r\n");
-    else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+          Serial1.printf("!\r\n\r\n");
+    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (skipChecksum)
@@ -476,7 +479,7 @@ void updateMeterValues(uint8_t period)
       int16_t len = buildTelegram30(line, telegram);  // also: prints to DSMRsend
       //    calcCRC = decodeTelegram(len);  // why??
     }
-    Serial.printf("!\r\n\r\n");
+    Serial1.printf("!\r\n\r\n");
     if (Verbose && ((telegramCount % 3) == 0))
     {
       Debugf("!\r\n\r\n");
@@ -487,7 +490,7 @@ void updateMeterValues(uint8_t period)
     Debugf("Telegram %d from file ...\r\n", ++recCount);
     readTelegramFromFile(telegramFileName);
   }
-  Serial.flush();
+  Serial1.flush();
   DebugFlush();
   telegramCount++;
 
@@ -506,11 +509,11 @@ void setup()
     delay(200);
   }
   Serial.begin(115200);
-  while(!Serial)
-  {
-    delay(10);
-  }
+  while(!Serial) { delay(10); }
   Serial.println("\r\nStarting up ....\r\n");
+
+  Serial1.begin(115200);
+  while(!Serial1) { delay(10); }
 
   oled_Init();
   oled_Clear();  // clear the screen so we can paint the menu.
@@ -544,17 +547,7 @@ void setup()
   oledPrintLine("Setup WiFi as:");
   oledPrintLine(String(_HOSTNAME));
   digitalWrite(LED_BUILTIN, HIGH);
-  /**
-    WiFi.mode(WIFI_STA);
-    WiFi.setHostname(devname);
-    WiFi.begin(ssid, password);
 
-    while (WiFi.status() != WL_CONNECTED)
-    {
-      Serial.print(".");
-      delay(500);
-    }
-  **/
   startWiFi(_HOSTNAME);
   for (int i=0; i<10; i++)
   {
@@ -620,10 +613,10 @@ void setup()
   nextMinute   = millis();
 
   // --- initial values
-  ED_T1       = 145.67;   // Energy Delivered
-  ED_T2       = 67.89;
-  ER_T1       = 111.1;     // Energy Returned
-  ER_T2       = 75.5;
+  ED_T1       = 6230.1;     // Energy Delivered
+  ED_T2       = 8614.8;
+  ER_T1       = 1183.1;     // Energy Returned
+  ER_T2       = 2601.1;
   V_l1        = 230.0;      // Voltages
   V_l2        = 231.1;
   V_l3        = 232.2;
@@ -638,7 +631,7 @@ void setup()
   IPR_l3      = 0.0;
   PDelivered  = 0.0;         // Power Delivered
   PReceived   = 0.0;         // Power Returned
-  GDelivered  = 100.001;     // Gas Delevered
+  GDelivered  = 4770.1;      // Gas Delevered
   //actYear     = 2014;
   //actMonth    = 1;
   //actDay      = 1;
@@ -671,30 +664,7 @@ void setup()
   httpServer.on("/", HTTP_POST, callIndex_html);
   //httpServer.on("/ReBoot", HTTP_POST, handleReBoot);
   httpServer.serveStatic("/FSmanager",     LittleFS, "/littleFSmanager.html");
-  httpServer.serveStatic("/FSmanager.png", LittleFS, "/FSmanager.png");
-
-  /*****
-  httpServer.onNotFound([]()
-  {
-    //DebugTln("============================================================");
-    //DebugTf("onNotFound(%s)\n", httpServer.uri().c_str());
-    //DebugTln("============================================================");
-    if (httpServer.uri() == "/update")
-    {
-      DebugTf("onNotFound(%s): ==> [/update]\n", httpServer.uri().c_str());
-      httpServer.send(200, "text/html", "/update" );
-
-    } else if (httpServer.uri() == "/")
-    {
-      //DebugTf("onNotFound(%s) ==> [/]\n", httpServer.uri().c_str());
-      httpServer.send(200, "text/html", DSMRindex_html );
-      reloadPage("/");
-  //} else {
-  //  DebugTf("onNotFound(%s) ==> [???] do nothing ..\n", httpServer.uri().c_str());
-
-    }
-  });
-  *****/
+  httpServer.serveStatic("/FSmanager.png", LittleFS, "/littleFSmanager.png");
 
   httpServer.begin();
   Serial.println( "HTTP server started" );
@@ -709,21 +679,37 @@ void setup()
   Serial.println("\nAnd now it begins ....");
 
   Serial.printf("Data Request Pin is %s\r\n", digitalRead(_DATA_REGUEST) ? "High":"Low");
+  Serial.printf("Setting: Ignore DTR Pin is %s\r\n", ignoreDTR ? "True":"False");
 
-  Serial.println("\r\nFurther debugging only on Telnet!\r\n");
+  Serial.println("\r\n\n=================================");
+  Serial.println(      "Further debugging only on Telnet!");
+  Serial.println(      "=================================\r\n\n\n");
   Serial.flush();
   Debugln("\nAnd now it begins ....");
   Debugln("\r\nFurther debugging only on Telnet!\r\n");
   DebugFlush();
   oled_Clear();  // clear the screen so we can paint the menu.
   sprintf(cMsg, "Protocol %s", actDSMR);
+  Serial.println(cMsg);
   oledPrintMsg(0, cMsg, 0);
   sprintf(cMsg, "Send: %8u", telegramCount);
+  Serial.println(cMsg);
   oledPrintMsg(3, cMsg, 10);
 
   digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
-  //Serial.swap();  //-- set TX to GPIO02 (pin 17)
+  delay(500);
+  //Serial.swap();  //-- set TX to GPIO02 (pin 17) [Wemos D4/pin11]
+  Serial1.begin(115200);  //-- GPIO15 - D8 on Wemos
+  while(!Serial1) { delay(10); }
 
+  for(int i=0; i<5; i++)
+  {
+    Serial1.println("\r\nAnd Than It Begins on the Serial Port GPIO02\r\n");
+    digitalWrite(_SIGNAL_LED, CHANGE);  //-- inversed
+    delay(500);
+    Serial1.flush();
+  }
+  delay(500);
   /*attachInterrupt(digitalPinToInterrupt(_FLASH_BUTTON), flashButtonISR, CHANGE);*/
 
 } // setup()
@@ -757,7 +743,7 @@ void loop()
 
 
   if (digitalRead(_DATA_REGUEST))
-    digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(LED_BUILTIN, HIGH);
   else  digitalWrite(LED_BUILTIN, LOW);
 
     //-- FS selected, but no file to use 
@@ -776,11 +762,8 @@ void loop()
       if (String(actDSMR) == "30")
       {
         sprintf(savDSMR, "30");
-        Serial.begin(9600, SERIAL_7E1);
-        while(!Serial)
-        {
-          delay(10);
-        }
+        Serial1.begin(9600, SERIAL_7E1);
+        while(!Serial1) { delay(10); }
         Debugln("Serial.begin(9600, SERIAL_7E1)");
         //Serial.begin(9600);
         delay(200);
@@ -788,11 +771,8 @@ void loop()
       else if (String(actDSMR) == "42")
       {
         sprintf(savDSMR, "42");
-        Serial.begin(115200);
-        while(!Serial)
-        {
-          delay(10);
-        }
+        Serial1.begin(115200);
+        while(!Serial1) { delay(10); }
         Debugln("Serial.begin(115200)");
         DebugFlush();
         delay(200);
@@ -800,11 +780,8 @@ void loop()
       else if (String(actDSMR) == "BE")
       {
         sprintf(savDSMR, "BE");
-        Serial.begin(115200);
-        while(!Serial)
-        {
-          delay(10);
-        }
+        Serial1.begin(115200);
+        while(!Serial1) { delay(10); }
         Debugln("Serial.begin(115200)");
         DebugFlush();
         delay(200);
@@ -812,11 +789,8 @@ void loop()
       else if (String(actDSMR) == "FS")
       {
         sprintf(savDSMR, "FS");
-        Serial.begin(115200);
-        while(!Serial)
-        {
-          delay(10);
-        }
+        Serial1.begin(115200);
+        while(!Serial1) { delay(10); }
         Debugln("Serial.begin(115200)");
         DebugFlush();
         delay(200);
@@ -834,12 +808,9 @@ void loop()
       else
       {
         sprintf(savDSMR, "50");
-        Serial.begin(115200);
-        while(!Serial)
-        {
-          delay(10);
-        }
-        Debugln("Serial.begin(115200)");
+        Serial1.begin(115200);
+        while(!Serial1) { delay(10); }
+        Debugln("Serial1.begin(115200)");
         DebugFlush();
         delay(200);
       }
@@ -848,7 +819,7 @@ void loop()
   //-- not running, so nothing to do
   if (runStatus == 0) return; 
 
-  if (digitalRead(_DATA_REGUEST))
+  if (digitalRead(_DATA_REGUEST) || ignoreDTR)
   {
     digitalWrite(LED_BUILTIN, LOW);
   }

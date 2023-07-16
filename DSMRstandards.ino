@@ -62,6 +62,7 @@ int16_t buildTelegram42(int16_t line, char telegram[])
       break;
     case 3:
       sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02dS)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond);
+    //sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02d%c)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond, isDST()?'S':'W');
       break;
     case 4:
       sprintf(telegram, "0-0:96.1.1(4530303336303000000000000000000042)\r\n", val);
@@ -202,7 +203,7 @@ int16_t buildTelegram42(int16_t line, char telegram[])
 
   if (line < maxLines42)
   {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
+    Serial1.print(telegram); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -292,6 +293,7 @@ int16_t buildTelegram50(int16_t line, char telegram[])
       break;
     case 3:
       sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02dS)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond);
+    //sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02d%c)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond, isDST()?'S':'W');
       break;
     case 4:
       sprintf(telegram, "0-0:96.1.1(4530303336303000000000000000000040)\r\n", val);
@@ -431,7 +433,7 @@ int16_t buildTelegram50(int16_t line, char telegram[])
 
   if (line < maxLines50)
   {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
+    Serial1.print(telegram); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -527,6 +529,7 @@ int16_t buildTelegramBE(int16_t line, char telegram[])
       break;
     case 3:
       sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02dS)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond);
+    //sprintf(telegram, "0-0:1.0.0(%02d%02d%02d%02d%02d%02d%c)\r\n", (year() - 2000), month(), day(), hour(), minute(), thisSecond, isDST()?'S':'W');
       break;
     case 4:
       sprintf(telegram, "0-0:96.1.1(4530303336303000000000000000000502)\r\n", val);
@@ -658,7 +661,7 @@ int16_t buildTelegramBE(int16_t line, char telegram[])
 
   if (line < maxLinesBE)   // from line 0 upto line 38!
   {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
+    Serial1.print(telegram); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -801,7 +804,7 @@ int16_t buildTelegram30(int16_t line, char telegram[])
 
   if (line < maxLines30)
   {
-    Serial.print(telegram); // <<<<---- nooit weghalen!!!!
+    Serial1.print(telegram); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -878,12 +881,12 @@ void readTelegramFromFile(char *tlgrmFileName)
     if (telegramEnd)
     {
       if (skipChecksum)
-            Serial.printf("!\r\n\r\n");
-      else  Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+            Serial1.printf("!\r\n\r\n");
+      else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
     else
     {
-      Serial.print(telegram);
+      Serial1.print(telegram);
       memset(telegram, 0, sizeof(telegram));
     }
     yield();

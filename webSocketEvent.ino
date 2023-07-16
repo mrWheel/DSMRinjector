@@ -76,6 +76,17 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t *payload, size_t le
         webSocket.sendTXT(wsClient, "msgType=skipChecksum" + wsString);
 
       }
+      if (wsPayload.indexOf("getIgnoreDTR") > -1)
+      {
+        wsString  = "";
+        wsString += ", ignoreDTR=";
+        if (ignoreDTR) wsString += "true";
+        else           wsString += "false";
+
+        DebugTln(wsString);
+        webSocket.sendTXT(wsClient, "msgType=ignoreDTR" + wsString);
+
+      }
       else if (wsPayload.indexOf("newDate") > -1)
       {
         int8_t wc = splitString(wsPayload.c_str(), ':', wOut, 10);
@@ -186,6 +197,18 @@ void webSocketEvent(uint8_t wsClient, WStype_t type, uint8_t *payload, size_t le
         if (wParm[1] == "true")
               skipChecksum = true;
         else  skipChecksum = false;
+        writeSettings();
+
+      }
+      else if (wsPayload.indexOf("setIgnoreDTR") > -1)
+      {
+        int8_t wc = splitString(wsPayload.c_str(), ':', wOut, 14);
+        DebugTf("wOut[1] => [%s]\n", wOut[1].c_str());
+        wc = splitString(wOut[1].c_str(), '=', wParm, 10);
+        //DebugTf("wOut[1][%s] => [%s]=[%s]\n", wOut[1].c_str(), wParm[0].c_str(), wParm[1].c_str());
+        if (wParm[1] == "true")
+              ignoreDTR = true;
+        else  ignoreDTR = false;
         writeSettings();
 
       }

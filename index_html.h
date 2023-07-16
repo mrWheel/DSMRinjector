@@ -92,8 +92,15 @@ static const char DSMRindex_html[] PROGMEM =
           </tr><tr>
            <td>skip Checksum</td>
            <td><input id='skipChecksum' type='checkbox' style='font-size:14px;' 
-                     name='skipChecksuum'  
+                     name='skipChecksum'  
                      onchange='validateField( "skipChecksum" )'>
+
+           </td>
+          </tr><tr>
+           <td>ignore DTR</td>
+           <td><input id='ignoreDTR' type='checkbox' style='font-size:14px;' 
+                     name='ignoreDTR'  
+                     onchange='validateField( "ignoreDTR" )'>
 
            </td>
          </tr><tr>
@@ -192,6 +199,8 @@ static const char DSMRindex_html[] PROGMEM =
     webSocketConn.send( "getDevInfo" );
     console.log( "getSkipChecksum" );
     webSocketConn.send( "getSkipChecksum" );
+    console.log( "getIgnoreDTRm" );
+    webSocketConn.send( "getIgnoreDTR" );
     needReload  = false;
 
   }; 
@@ -290,17 +299,40 @@ static const char DSMRindex_html[] PROGMEM =
           }
         } //  for ..
     }
+    else if (msgType[1] == "ignoreDTR" ) 
+    {
+        console.log("ignoreDTR: "+payload);
+        for ( var i = 1; i < singlePair.length; i++ ) 
+        {
+          onePair = singlePair[i].split("=");
+          console.log("set["+onePair[0].trim()+"] to["+onePair[1].trim()+"]" );
+          if (onePair[0].trim() == "ignoreDTR" ) 
+          {
+            console.log("ignoreDTR["+onePair[1].trim()+"]" );
+            var nDTR = onePair[1].trim();
+            if (nDTR == "1" || nDTR == "true")
+                  document.getElementById("ignoreDTR").checked = true;
+            else  document.getElementById("ignoreDTR").checked = false;
+          }
+        } //  for ..
+    }
   };
 
   
   function validateField(field) 
   {
-      console.log(" validateField(): ["+field+"]" );
+    console.log(" validateField(): ["+field+"]" );
     if (field == "skipChecksum")
     {
       var nField = document.getElementById(field).checked;  
       console.log("setChecksum:newChecksum="+nField);
       webSocketConn.send("setChecksum:newChecksum="+nField);
+    }
+    else if (field == "ignoreDTR")
+    {
+      var nField = document.getElementById(field).checked;  
+      console.log("setIgnoreDTR:newIgnoreDTR="+nField);
+      webSocketConn.send("setIgnoreDTR:newIgnoreDTR="+nField);
     }
     else
     {

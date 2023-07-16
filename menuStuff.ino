@@ -178,6 +178,10 @@ void handleKeyInput()
       case 'D':
         selectDSMRfile();
         break;
+      case 'i':
+      case 'I':
+        ignoreDTR = !ignoreDTR;
+        break;
       case 's':
       case 'S':
         runStatus = !runStatus;
@@ -222,6 +226,7 @@ void handleKeyInput()
         Debugln("   B - Board, Build info & system status\r");
         Debugln("  *D - Select DSMR standard (or file)\r");
         Debugf( "   S - Start/Stop sending telegrams [%s]\r\n", runStatus ? "Running":"Stopped");
+        Debugf( "   I - Ignore DTR [%s]\r\n", ignoreDTR ? "True":"False");
         Debugf( "   V - Toggle Verbose [%s] (less telegrams will be send!)\r\n", Verbose ? "On":"Off");
         Debugln("  *R - Reboot\r");
         Debugln("  *W - reset WiFi credentials\r");
