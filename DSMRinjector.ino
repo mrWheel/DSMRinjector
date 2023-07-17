@@ -22,6 +22,25 @@
     - Erase Flash: "Only Sketch"
     - Port: "?"
 
+*/
+
+/*--------------------------------------------------------
+    Wemos D1 Pinout
+
+                               /----------------\
+                               |O +-+-  --  --  |
+                               |  | | | | |  |  |
+                               |  | | --  --  - |
+                         RST   |                |  TX   GPIO1 -->
+                  ADC0    A0   |                |  RX   GPIO3 <--
+                GPIO16    D0   |                |  D1   GPIO5 SCL
+                GPIO14    D5   |                |  D2   GPIO4 SDA
+        DTR --> GPIO12    D6   |                |  D3   GPIO0 <-- BUTTON
+                GPIO13    D7   |                |  D4   GPIO2 --> TX1 
+        LED <-- GPIO15    D8   |                |  GND
+                         3v3   |                |  5V
+                                 > reset       O|
+                                 +--------------+
 **
 ** Formatting ( http://astyle.sourceforge.net/astyle.html#_Quick_Start )
 **   - Allman style (-A1)
@@ -253,14 +272,14 @@ int FindCharInArrayRev(unsigned char array[], char c, int len)
 int16_t decodeTelegram(int len)
 {
   //need to check for start
-  int startChar = FindCharInArrayRev((unsigned char *)telegram, '/', len);
-  int endChar   = FindCharInArrayRev((unsigned char *)telegram, '!', len);
+  int startChar = FindCharInArrayRev((unsigned char *)telegramLine, '/', len);
+  int endChar   = FindCharInArrayRev((unsigned char *)telegramLine, '!', len);
 
   bool validCRCFound = false;
   if(startChar>=0)
   {
     //start found. Reset CRC calculation
-    currentCRC=CRC16(0x0000, (unsigned char *) telegram+startChar, len-startChar);
+    currentCRC=CRC16(0x0000, (unsigned char *) telegramLine+startChar, len-startChar);
     if(outputOnSerial)
     {
       //Serial.print("S>");
@@ -273,7 +292,7 @@ int16_t decodeTelegram(int len)
   else if(endChar>=0)
   {
     //add to crc calc
-    currentCRC=CRC16(currentCRC, (unsigned char *)telegram+endChar, 1);
+    currentCRC=CRC16(currentCRC, (unsigned char *)telegramLine+endChar, 1);
     //char messageCRC[5];
     //strncpy(messageCRC, telegram + endChar + 1, 4);
     //messageCRC[4]=0; //thanks to HarmOtten (issue 5)
@@ -286,7 +305,7 @@ int16_t decodeTelegram(int len)
   }
   else
   {
-    currentCRC=CRC16(currentCRC, (unsigned char *)telegram, len);
+    currentCRC=CRC16(currentCRC, (unsigned char *)telegramLine, len);
     if(outputOnSerial)
     {
       //Serial.print("->");
@@ -416,7 +435,7 @@ void updateMeterValues(uint8_t period)
     for (int16_t line = 0; line <= maxLines42; line++)
     {
       yield();
-      int16_t len = buildTelegram42(line, telegram);  // also: prints to DSMRsend
+      int16_t len = buildTelegram42(line, telegramLine);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
     if (skipChecksum)
@@ -432,32 +451,51 @@ void updateMeterValues(uint8_t period)
   }
   else if (String(actDSMR) == "50")
   {
+    //-- 17/07/2023----
     //-- some "leadIn chars" ...
-    Serial1.printf("\r\n\r\n");
+    //-Serial1.printf("\r\n\r\n");
+    memset(telegram, 0, _MAX_TELEGRAM_LEN);
+    telegramPos = 0;
+    //-- 17/07/2023----
+    
     for (int16_t line = 0; line <= maxLines50; line++)
     {
       yield();
-      int16_t len = buildTelegram50(line, telegram);  // also: prints to DSMRsend
+      memset(telegramLine, 0, _MAX_LINE_LEN);
+      int16_t len = buildTelegram50(line, telegramLine);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
+      telegramPos += len;
     }
     //Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     if (skipChecksum)
-          Serial1.printf("!\r\n\r\n");
-    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+    {
+      //-17-07-Serial1.printf("!\r\n\r\n");
+      snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!\r\n\r\n\0\0\0\0\0\0");
+    }
+    else  
+    {
+      //-17-07-Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+    }
+    Serial1.print(telegram);
+    Debugln("==> new telegram:");
+    Debug(telegram);
+    /**
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (skipChecksum)
             Debug("!\r\n\r\n");
       else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
-
+    **/
   }
   else if (String(actDSMR) == "BE")
   {
     for (int16_t line = 0; line <= maxLinesBE; line++)
     {
       yield();
-      int16_t len = buildTelegramBE(line, telegram);  // also: prints to DSMRsend
+      int16_t len = buildTelegramBE(line, telegramLine);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
     }
     if (skipChecksum)
@@ -476,7 +514,7 @@ void updateMeterValues(uint8_t period)
     for (int16_t line = 0; line <= maxLines30; line++)
     {
       yield();
-      int16_t len = buildTelegram30(line, telegram);  // also: prints to DSMRsend
+      int16_t len = buildTelegram30(line, telegramLine);  // also: prints to DSMRsend
       //    calcCRC = decodeTelegram(len);  // why??
     }
     Serial1.printf("!\r\n\r\n");

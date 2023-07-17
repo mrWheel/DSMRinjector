@@ -1,7 +1,8 @@
 
 
 //-- longest normal line (0-9:96.13.1) is 2048 char (+3 for \r\n\0)
-#define MAXLINELENGTH     2051
+#define _MAX_LINE_LEN     2051
+#define _MAX_TELEGRAM_LEN 10000
 #define _HOSTNAME         "DSMRinjector"
 #define _SIGNAL_LED       15  // D8
 #define _DATA_REGUEST     12  // D6
@@ -46,12 +47,12 @@ enum  { PRESSED_BIT, QUICKRELEASE_BIT, MIDRELEASE_BIT, LONGRELEASE_BIT
 //------ press Types ----------
 enum  { NOT_PRESSED, QUICK_PRESSED, MID_PRESSED, LONG_PRESSED };
 
-uint8_t runMode   = 0;
-uint8_t runStatus = 1;
+uint8_t     runMode   = 0;
+uint8_t     runStatus = 1;
 
-char telegram[MAXLINELENGTH];
-
-
+char        telegramLine[_MAX_LINE_LEN];
+char        telegram[_MAX_TELEGRAM_LEN] = {};
+int16_t     telegramPos = 0;
 //char ssid[] = "AandeWiFi";      // your network SSID (name)
 //char password[] = "3741TS12tl"; // your network key
 
