@@ -194,7 +194,8 @@ int16_t buildTelegram42(int16_t line, char telegramLine[])
       break;
 
     case 40:
-      sprintf(telegramLine, "!xxxx\r\n");
+      //sprintf(telegramLine, "!xxxx\r\n");
+      sprintf(telegramLine, "!\0\0\0\0");
       break;
 
   } // switch(line)
@@ -206,9 +207,10 @@ int16_t buildTelegram42(int16_t line, char telegramLine[])
     telegramPos = 0;
   }
 
+/***************
   if (line < maxLines42)
   {
-    Serial1.print(telegramLine); // <<<<---- nooit weghalen!!!!
+    P1_OUT.print(telegramLine); // <<<<---- nooit weghalen!!!!
     snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, telegramLine);
     telegramPos += strlen(telegramLine);
     if (Verbose && ((telegramCount % 3) == 0))
@@ -221,9 +223,21 @@ int16_t buildTelegram42(int16_t line, char telegramLine[])
     }
     //else if (line = 3) Debug(telegramLine);
   }
+***********/
+
+  if (line <= maxLines42)
+  {
+    if (Verbose && ((telegramCount % 3) == 0))
+    {
+      if (line == 0)
+      {
+        Debugf("\r\nTelegram [#%d]\r\n", telegramCount);
+      }
+      Debug(telegramLine);
+    }
+  }
 
   for(len = 0; len < _MAX_LINE_LEN, telegramLine[len] != '\0'; len++) {}
-
   return len;
 
 } // buildTelegram42()
@@ -431,33 +445,27 @@ int16_t buildTelegram50(int16_t line, char telegramLine[])
       break;
 
     case 42:
-      sprintf(telegramLine, "!xxxx\r\n");
+      //sprintf(telegramLine, "!xxxx\r\n");
+      sprintf(telegramLine, "!\0\0\0\0\0\0");
       break;
 
   } // switch(line)
 
   maxLines50 = 42;
-
-/***
-  if (line < maxLines50)
+  
+  if (line <= maxLines50)
   {
-    //-17-07-Serial1.print(telegramLine); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
       {
-        Debugln();
+        Debugf("\r\nTelegram [#%d]\r\n", telegramCount);
       }
       Debug(telegramLine);
     }
-    //else if (line = 3) Debug(telegramLine);
   }
-***/
-
   for(len = 0; len < _MAX_LINE_LEN, telegramLine[len] != '\0'; len++) {}
   return len;
-
-  //return strlen(telegramLine);
 
 } // buildTelegram50()
 
@@ -662,16 +670,15 @@ int16_t buildTelegramBE(int16_t line, char telegramLine[])
               Format((GDelivered * 1.3), 9, 3).c_str());
       break;
     case 43:
-      sprintf(telegramLine, "!xxxx\r\n");
+      sprintf(telegramLine, "!\0\0\0");
       break;
 
   } // switch(line)
 
   maxLinesBE = 43;
 
-  if (line < maxLinesBE)   // from line 0 upto line 38!
+  if (line <= maxLinesBE)   // from line 0 upto line 38!
   {
-    Serial1.print(telegramLine); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -805,16 +812,15 @@ int16_t buildTelegram30(int16_t line, char telegramLine[])
       sprintf(telegramLine, "0-4:24.4.0(1)\r\n", val);
       break;
     case 23:
-      sprintf(telegramLine, "!\r\n\r\n");     // just for documentation
+      sprintf(telegramLine, "!\0\0\0");     // just for documentation
       break;
 
   } // switch(line)
 
   maxLines30 = 23;
 
-  if (line < maxLines30)
+  if (line <= maxLines30)
   {
-    Serial1.print(telegramLine); // <<<<---- nooit weghalen!!!!
     if (Verbose && ((telegramCount % 3) == 0))
     {
       if (line == 0)
@@ -891,12 +897,12 @@ void readTelegramFromFile(char *tlgrmFileName)
     if (telegramLineEnd)
     {
       if (skipChecksum)
-            Serial1.printf("!\r\n\r\n");
-      else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+            P1_OUT.printf("!\r\n\r\n");
+      else  P1_OUT.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
     }
     else
     {
-      Serial1.print(telegramLine);
+      P1_OUT.print(telegramLine);
       memset(telegramLine, 0, sizeof(telegramLine));
     }
     yield();

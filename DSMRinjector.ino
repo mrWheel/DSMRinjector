@@ -2,7 +2,7 @@
 ** DSMRinjector v2.0
 **
 */
-#define _FW_VERSION "2.1 (16-07-2023)"
+#define _FW_VERSION "2.1 (18-07-2023)"
 /*
    Arduino-IDE settings for ESP12 (Generic):
 
@@ -25,22 +25,22 @@
 */
 
 /*--------------------------------------------------------
-    Wemos D1 Pinout
+    Wemos D1 Pinout hardware 18-07-2023 v2.1c
 
-                               /----------------\
-                               |O +-+-  --  --  |
-                               |  | | | | |  |  |
-                               |  | | --  --  - |
-                         RST   |                |  TX   GPIO1 -->
-                  ADC0    A0   |                |  RX   GPIO3 <--
-                GPIO16    D0   |                |  D1   GPIO5 SCL
-                GPIO14    D5   |                |  D2   GPIO4 SDA
-        DTR --> GPIO12    D6   |                |  D3   GPIO0 <-- BUTTON
-                GPIO13    D7   |                |  D4   GPIO2 --> TX1 
-        LED <-- GPIO15    D8   |                |  GND
-                         3v3   |                |  5V
-                                 > reset       O|
-                                 +--------------+
+                                  /----------------\
+                                  |O +-+-  --  --  |
+                                  |  | | | | |  |  |
+                                  |  | | --  --  - |
+                            RST   |                |  TX   GPIO1 -->
+                     ADC0    A0   |                |  RX   GPIO3 <--
+                   GPIO16    D0   |                |  D1   GPIO5 SCL
+           LED <-- GPIO14    D5   |                |  D2   GPIO4 SDA
+           DTR --> GPIO12    D6   |                |  D3   GPIO0 <-- BUTTON
+          Swap(Rx) GPIO13    D7   |                |  D4   GPIO2 --> (Tx1) 
+          Swap(Tx) GPIO15    D8   |                |  GND
+                            3v3   |                |  5V
+                                   > reset        O|
+                                   +---------------+
 **
 ** Formatting ( http://astyle.sourceforge.net/astyle.html#_Quick_Start )
 **   - Allman style (-A1)
@@ -435,25 +435,45 @@ void updateMeterValues(uint8_t period)
     for (int16_t line = 0; line <= maxLines42; line++)
     {
       yield();
+      memset(telegramLine, 0, _MAX_LINE_LEN);
       int16_t len = buildTelegram42(line, telegramLine);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
+      telegramPos += len;
     }
+
     if (skipChecksum)
-          Serial1.printf("!\r\n\r\n");
-    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-    if (Verbose && ((telegramCount % 3) == 0))
     {
-      if (skipChecksum)
-            Debug("!\r\n\r\n");
-      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "\r\n\r\n\0\0\0\0\0\0");
+      telegramPos += 4;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debug("\r\n\r\n\0\0");
+      }
     }
+    else  
+    {
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      telegramPos += 8;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debugf("%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF));
+      }
+    }
+
+    //--- send telegram to P1 port
+    Debugln("\r\n----- full telegram ------------");
+    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    Debugln("--------------------------------------------\r\n");
+
+    for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
+    //P1_OUT.print(telegram);
+    P1_OUT.flush();
 
   }
   else if (String(actDSMR) == "50")
   {
     //-- 17/07/2023----
-    //-- some "leadIn chars" ...
-    //-Serial1.printf("\r\n\r\n");
     memset(telegram, 0, _MAX_TELEGRAM_LEN);
     telegramPos = 0;
     //-- 17/07/2023----
@@ -467,46 +487,78 @@ void updateMeterValues(uint8_t period)
       snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
       telegramPos += len;
     }
-    //Serial.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+
     if (skipChecksum)
     {
-      //-17-07-Serial1.printf("!\r\n\r\n");
-      snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!\r\n\r\n\0\0\0\0\0\0");
+      //snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!\r\n\r\n\0\0\0\0\0\0");
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "\r\n\r\n\0\0\0\0\0\0");
+      telegramPos += 4;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debug("\r\n\r\n\0\0");
+      }
     }
     else  
     {
-      //-17-07-Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-      snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      //snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      telegramPos += 8;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debugf("%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF));
+      }
     }
-    Serial1.print(telegram);
-    Debugln("==> new telegram:");
-    Debug(telegram);
-    /**
-    if (Verbose && ((telegramCount % 3) == 0))
-    {
-      if (skipChecksum)
-            Debug("!\r\n\r\n");
-      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-    }
-    **/
+
+    //--- send telegram to P1 port
+    Debugln("\r\n----- full telegram ------------");
+    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    Debugln("--------------------------------------------\r\n");
+
+    for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
+    //P1_OUT.print(telegram);
+    P1_OUT.flush();
   }
   else if (String(actDSMR) == "BE")
   {
     for (int16_t line = 0; line <= maxLinesBE; line++)
     {
       yield();
+      memset(telegramLine, 0, _MAX_LINE_LEN);
       int16_t len = buildTelegramBE(line, telegramLine);  // also: prints to DSMRsend
       calcCRC = decodeTelegram(len);
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
+      telegramPos += len;
     }
+
     if (skipChecksum)
-          Serial1.printf("!\r\n\r\n");
-    else  Serial1.printf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
-    if (Verbose && ((telegramCount % 3) == 0))
     {
-      if (skipChecksum)
-            Debug("!\r\n\r\n");
-      else  Debugf("!%04X\r\n\r\n", (calcCRC & 0xFFFF));
+      //snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!\r\n\r\n\0\0\0\0\0\0");
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "\r\n\r\n\0\0\0\0\0\0");
+      telegramPos += 4;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debug("\r\n\r\n\0\0");
+      }
     }
+    else  
+    {
+      //snprintf(&telegram[telegramPos-7], _MAX_TELEGRAM_LEN, "!%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF) );
+      telegramPos += 8;
+      if (Verbose && ((telegramCount % 3) == 0))
+      {
+        Debugf("%04X\r\n\r\n\0\0", (calcCRC & 0xFFFF));
+      }
+    }
+
+    //--- send telegram to P1 port
+    Debugln("\r\n----- full telegram ------------");
+    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    Debugln("--------------------------------------------\r\n");
+
+    for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
+    //P1_OUT.print(telegram);
+    P1_OUT.flush();
 
   }
   else if (String(actDSMR) == "30")
@@ -514,21 +566,27 @@ void updateMeterValues(uint8_t period)
     for (int16_t line = 0; line <= maxLines30; line++)
     {
       yield();
+      memset(telegramLine, 0, _MAX_LINE_LEN);
       int16_t len = buildTelegram30(line, telegramLine);  // also: prints to DSMRsend
-      //    calcCRC = decodeTelegram(len);  // why??
+      //--    calcCRC = decodeTelegram(len);  // why?? no checksum for DSMR < 4
+      snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
+      telegramPos += len;
     }
-    Serial1.printf("!\r\n\r\n");
+
+    snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "\r\n\r\n\0\0\0\0\0\0");
+    telegramPos += 4;
     if (Verbose && ((telegramCount % 3) == 0))
     {
-      Debugf("!\r\n\r\n");
+      Debug("\r\n\r\n\0\0");
     }
+
   }
   else     // from file!!!
   {
     Debugf("Telegram %d from file ...\r\n", ++recCount);
     readTelegramFromFile(telegramFileName);
   }
-  Serial1.flush();
+  P1_OUT.flush();
   DebugFlush();
   telegramCount++;
 
@@ -549,9 +607,6 @@ void setup()
   Serial.begin(115200);
   while(!Serial) { delay(10); }
   Serial.println("\r\nStarting up ....\r\n");
-
-  Serial1.begin(115200);
-  while(!Serial1) { delay(10); }
 
   oled_Init();
   oled_Clear();  // clear the screen so we can paint the menu.
@@ -576,7 +631,7 @@ void setup()
 
   //oledPrintMsg(0, " <DSMRinjector2>", 0);
   int8_t sPos = String(_FW_VERSION).indexOf(' ');
-  snprintf(cMsg, sizeof(cMsg), "(c)2022 [%s]", String(_FW_VERSION).substring(0, sPos).c_str());
+  snprintf(cMsg, sizeof(cMsg), "(c)2023 [%s]", String(_FW_VERSION).substring(0, sPos).c_str());
   oledPrintLine(String(cMsg));
   oledPrintLine("Willem Aandewiel");
   yield();
@@ -724,8 +779,11 @@ void setup()
   Serial.println(      "=================================\r\n\n\n");
   Serial.flush();
   Debugln("\nAnd now it begins ....");
-  Debugln("\r\nFurther debugging only on Telnet!\r\n");
+  Debugln("\r\n\n=================================");
+  Debugln(      "Further debugging only on Telnet!");
+  Debugln(      "=================================\r\n\n\n");
   DebugFlush();
+  
   oled_Clear();  // clear the screen so we can paint the menu.
   sprintf(cMsg, "Protocol %s", actDSMR);
   Serial.println(cMsg);
@@ -736,19 +794,11 @@ void setup()
 
   digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
   delay(500);
-  //Serial.swap();  //-- set TX to GPIO02 (pin 17) [Wemos D4/pin11]
-  Serial1.begin(115200);  //-- GPIO15 - D8 on Wemos
-  while(!Serial1) { delay(10); }
-
-  for(int i=0; i<5; i++)
-  {
-    Serial1.println("\r\nAnd Than It Begins on the Serial Port GPIO02\r\n");
-    digitalWrite(_SIGNAL_LED, CHANGE);  //-- inversed
-    delay(500);
-    Serial1.flush();
-  }
-  delay(500);
-  /*attachInterrupt(digitalPinToInterrupt(_FLASH_BUTTON), flashButtonISR, CHANGE);*/
+  //-- does not work with optocoupler (pulled low) 
+  //-- Serial.set_tx(2); //--  UART0 TX is now GPIO02!!
+  P1_OUT.begin(115200);  //-- GPIO15 - D8 on Wemos
+  while(!P1_OUT) { delay(10); }
+  P1_OUT.swap();  //-- set TX to GPIO15 [Wemos D8]
 
 } // setup()
 
@@ -776,7 +826,7 @@ void loop()
 
   if (millis() > signalLedTimer)
   {
-    digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
+    digitalWrite(_SIGNAL_LED, LOW);  
   }
 
 
@@ -796,40 +846,49 @@ void loop()
       DebugFlush();
       Serial.end();
       delay(200);
+      
+      oled_Clear();  // clear the screen so we can paint the menu.
+      sprintf(cMsg, "Protocol %s", actDSMR);
+      Serial.println(cMsg);
+      oledPrintMsg(0, cMsg, 0);
 
       if (String(actDSMR) == "30")
       {
         sprintf(savDSMR, "30");
-        Serial1.begin(9600, SERIAL_7E1);
-        while(!Serial1) { delay(10); }
-        Debugln("Serial.begin(9600, SERIAL_7E1)");
+        P1_OUT.begin(9600, SERIAL_7E1);
+        while(!P1_OUT) { delay(10); }
+        P1_OUT.swap();
+        Debugln("P1_OUT.begin(9600, SERIAL_7E1)");
         //Serial.begin(9600);
         delay(200);
       }
       else if (String(actDSMR) == "42")
       {
         sprintf(savDSMR, "42");
-        Serial1.begin(115200);
-        while(!Serial1) { delay(10); }
-        Debugln("Serial.begin(115200)");
+        P1_OUT.begin(115200);
+        while(!P1_OUT) { delay(10); }
+        P1_OUT.swap();
+        Debugln("P1_OUT.begin(115200)");
         DebugFlush();
         delay(200);
       }
       else if (String(actDSMR) == "BE")
       {
         sprintf(savDSMR, "BE");
-        Serial1.begin(115200);
-        while(!Serial1) { delay(10); }
-        Debugln("Serial.begin(115200)");
+        P1_OUT.begin(115200);
+        while(!P1_OUT) { delay(10); }
+        P1_OUT.swap();
+        Debugln("P1_OUT.begin(115200)");
         DebugFlush();
         delay(200);
       }
       else if (String(actDSMR) == "FS")
       {
         sprintf(savDSMR, "FS");
-        Serial1.begin(115200);
-        while(!Serial1) { delay(10); }
-        Debugln("Serial.begin(115200)");
+        P1_OUT.begin(115200);
+        while(!P1_OUT) { delay(10); }
+        P1_OUT.swap();
+        Debugln("P1_OUT.begin(115200)");
         DebugFlush();
         delay(200);
         Serial.println("-> Select File!");
@@ -846,9 +905,10 @@ void loop()
       else
       {
         sprintf(savDSMR, "50");
-        Serial1.begin(115200);
-        while(!Serial1) { delay(10); }
-        Debugln("Serial1.begin(115200)");
+        P1_OUT.begin(115200);
+        while(!P1_OUT) { delay(10); }
+        P1_OUT.swap();
+        Debugln("P1_OUT.begin(115200)");
         DebugFlush();
         delay(200);
       }
@@ -871,8 +931,12 @@ void loop()
 
   //-- only show 3 telegrams in Verbode mode
   //Debugf("verboseCount [%d]\r\n", verboseCount);
-  if (verboseCount > 6) Verbose = false;
-  digitalWrite(_SIGNAL_LED, LOW); //-- inversed
+  if (verboseCount > 6) 
+  {
+    if (Verbose) Debugln("Stop showing telegrams");
+    Verbose = false;
+  }
+  digitalWrite(_SIGNAL_LED, HIGH); 
   signalLedTimer = millis()+150;
 
   switch(runMode)

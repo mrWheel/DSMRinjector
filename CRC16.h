@@ -1,6 +1,13 @@
 #ifndef CRC16_H
 #define CRC16_H
 
+/*
+**   CRC is a CRC16 value calculated over the preceding characters in the data message 
+**   (from “/” to “!” using the polynomial: x16+x15+x2+1). 
+**   CRC16 uses no XOR in, no XOR out and is computed with least significant bit first. 
+**   The value is represented as 4 hexadecimal characters (MSB first).
+*/
+
 #if defined(ARDUINO) && ARDUINO >= 100
   #include "Arduino.h"
 #else

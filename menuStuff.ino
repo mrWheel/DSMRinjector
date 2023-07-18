@@ -188,6 +188,7 @@ void handleKeyInput()
         break;
       case 'v':
       case 'V':
+        if (!Verbose) Debugln("Start showing every 3th telegram");
         Verbose = !Verbose;
         verboseCount = 0;
         break;

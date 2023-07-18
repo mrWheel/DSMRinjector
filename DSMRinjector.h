@@ -4,11 +4,12 @@
 #define _MAX_LINE_LEN     2051
 #define _MAX_TELEGRAM_LEN 10000
 #define _HOSTNAME         "DSMRinjector"
-#define _SIGNAL_LED       15  // D8
+#define _SIGNAL_LED       14  // D5 <<<<<<
 #define _DATA_REGUEST     12  // D6
 #define _FLASH_BUTTON     0   // D3
 #define _SHOW_BTN_TIME    2000
 #define _SETTINGS_FILE    "/DSMRsettings.ini"
+#define P1_OUT            Serial
 
 #include "CRC16.h"
 //-- https://github.com/PaulStoffregen/Time
