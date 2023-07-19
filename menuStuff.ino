@@ -185,6 +185,9 @@ void handleKeyInput()
       case 's':
       case 'S':
         runStatus = !runStatus;
+        if (runStatus)  oledPrintMsg(1, "Status: Running",0);
+        else            oledPrintMsg(1, "Status: Stopped",0);
+
         break;
       case 'v':
       case 'V':

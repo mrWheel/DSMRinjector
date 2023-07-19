@@ -1,13 +1,13 @@
 
 
 //-- longest normal line (0-9:96.13.1) is 2048 char (+3 for \r\n\0)
-#define _MAX_LINE_LEN     2051
+#define _MAX_LINE_LEN      2051
 #define _MAX_TELEGRAM_LEN 10000
 #define _HOSTNAME         "DSMRinjector"
-#define _SIGNAL_LED       14  // D5 <<<<<<
-#define _DATA_REGUEST     12  // D6
-#define _FLASH_BUTTON     0   // D3
-#define _SHOW_BTN_TIME    2000
+#define _FLASH_BUTTON         0   // D3
+#define _DATA_REGUEST        12  // D6
+#define _SIGNAL_LED          14  // D5 <<<<<<
+#define _SHOW_BTN_TIME     2000
 #define _SETTINGS_FILE    "/DSMRsettings.ini"
 #define P1_OUT            Serial
 
@@ -82,7 +82,7 @@ int8_t      verboseCount = 0;
 char        cTimeStamp[25];
 uint16_t    maxLines42, maxLines50, maxLinesBE, maxLines30;
 uint8_t     btnState = 0;
-uint32_t    interTimer, bounceTimer, buttonTimer, aliveTimer;
+uint32_t    DtrTimer, bounceTimer, buttonTimer, aliveTimer;
 uint32_t    showBtnTimer;
 uint8_t     pressType = 0;
 //----- littleFSmanager --

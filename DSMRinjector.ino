@@ -2,7 +2,7 @@
 ** DSMRinjector v2.0
 **
 */
-#define _FW_VERSION "2.1 (18-07-2023)"
+#define _FW_VERSION "2.1 (19-07-2023)"
 /*
    Arduino-IDE settings for ESP12 (Generic):
 
@@ -36,7 +36,7 @@
                    GPIO16    D0   |                |  D1   GPIO5 SCL
            LED <-- GPIO14    D5   |                |  D2   GPIO4 SDA
            DTR --> GPIO12    D6   |                |  D3   GPIO0 <-- BUTTON
-          Swap(Rx) GPIO13    D7   |                |  D4   GPIO2 --> (Tx1) 
+          Swap(Rx) GPIO13    D7   |                |  D4   GPIO2 --> (LED_BUILTIN) 
           Swap(Tx) GPIO15    D8   |                |  GND
                             3v3   |                |  5V
                                    > reset        O|
@@ -432,6 +432,9 @@ void updateMeterValues(uint8_t period)
 
   if (String(actDSMR) == "42")
   {
+    memset(telegram, 0, _MAX_TELEGRAM_LEN);
+    telegramPos = 0;
+    
     for (int16_t line = 0; line <= maxLines42; line++)
     {
       yield();
@@ -462,21 +465,18 @@ void updateMeterValues(uint8_t period)
     }
 
     //--- send telegram to P1 port
-    Debugln("\r\n----- full telegram ------------");
-    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
-    Debugln("--------------------------------------------\r\n");
+    //Debugln("\r\n----- full telegram ------------");
+    //for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    //Debugln("--------------------------------------------\r\n");
 
     for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
-    //P1_OUT.print(telegram);
     P1_OUT.flush();
 
   }
   else if (String(actDSMR) == "50")
   {
-    //-- 17/07/2023----
     memset(telegram, 0, _MAX_TELEGRAM_LEN);
     telegramPos = 0;
-    //-- 17/07/2023----
     
     for (int16_t line = 0; line <= maxLines50; line++)
     {
@@ -510,16 +510,18 @@ void updateMeterValues(uint8_t period)
     }
 
     //--- send telegram to P1 port
-    Debugln("\r\n----- full telegram ------------");
-    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
-    Debugln("--------------------------------------------\r\n");
+    //Debugln("\r\n----- full telegram ------------");
+    //for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    //Debugln("--------------------------------------------\r\n");
 
     for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
-    //P1_OUT.print(telegram);
     P1_OUT.flush();
   }
   else if (String(actDSMR) == "BE")
   {
+    memset(telegram, 0, _MAX_TELEGRAM_LEN);
+    telegramPos = 0;
+    
     for (int16_t line = 0; line <= maxLinesBE; line++)
     {
       yield();
@@ -552,9 +554,9 @@ void updateMeterValues(uint8_t period)
     }
 
     //--- send telegram to P1 port
-    Debugln("\r\n----- full telegram ------------");
-    for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
-    Debugln("--------------------------------------------\r\n");
+    //Debugln("\r\n----- full telegram ------------");
+    //for(int p=0; p<telegramPos; p++) Debug(telegram[p]);
+    //Debugln("--------------------------------------------\r\n");
 
     for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
     //P1_OUT.print(telegram);
@@ -563,22 +565,21 @@ void updateMeterValues(uint8_t period)
   }
   else if (String(actDSMR) == "30")
   {
+    memset(telegram, 0, _MAX_TELEGRAM_LEN);
+    telegramPos = 0;
+    
     for (int16_t line = 0; line <= maxLines30; line++)
     {
       yield();
       memset(telegramLine, 0, _MAX_LINE_LEN);
-      int16_t len = buildTelegram30(line, telegramLine);  // also: prints to DSMRsend
-      //--    calcCRC = decodeTelegram(len);  // why?? no checksum for DSMR < 4
+      int16_t len = buildTelegram30(line, telegramLine);  
       snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "%s", telegramLine);
       telegramPos += len;
     }
 
-    snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, "\r\n\r\n\0\0\0\0\0\0");
-    telegramPos += 4;
-    if (Verbose && ((telegramCount % 3) == 0))
-    {
-      Debug("\r\n\r\n\0\0");
-    }
+    //--- send telegram to P1 port
+    for(int p=0; p<telegramPos; p++) P1_OUT.print(telegram[p]);
+    P1_OUT.flush();
 
   }
   else     // from file!!!
@@ -788,6 +789,8 @@ void setup()
   sprintf(cMsg, "Protocol %s", actDSMR);
   Serial.println(cMsg);
   oledPrintMsg(0, cMsg, 0);
+  if (runStatus)  oledPrintMsg(1, "Status: Running", 0);
+  else            oledPrintMsg(1, "Status: Stopped", 0);
   sprintf(cMsg, "Send: %8u", telegramCount);
   Serial.println(cMsg);
   oledPrintMsg(3, cMsg, 10);
@@ -795,10 +798,13 @@ void setup()
   digitalWrite(_SIGNAL_LED, HIGH);  //-- inversed
   delay(500);
   //-- does not work with optocoupler (pulled low) 
-  //-- Serial.set_tx(2); //--  UART0 TX is now GPIO02!!
-  P1_OUT.begin(115200);  //-- GPIO15 - D8 on Wemos
+  //--  UART0 TX is now GPIO02!!
+  //-- Serial.set_tx(2); 
+  //-- reset any previous swap() - TX is "GPIO01", RX is "GPIO03"
+  P1_OUT.begin(115200);  
   while(!P1_OUT) { delay(10); }
-  P1_OUT.swap();  //-- set TX to GPIO15 [Wemos D8]
+  //-- set TX to "GPIO15" [D8]  RX to "GPIO13" [D7]
+  P1_OUT.swap();  
 
 } // setup()
 
@@ -813,6 +819,13 @@ void loop()
   handleKeyInput();
 
   handleFlashButton();
+
+
+  if (millis() > DtrTimer)
+  {
+    //-- inversed, so "Off"
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
 
   if (millis() > nextESPcheck)
   {
@@ -830,9 +843,9 @@ void loop()
   }
 
 
-  if (digitalRead(_DATA_REGUEST))
-        digitalWrite(LED_BUILTIN, HIGH);
-  else  digitalWrite(LED_BUILTIN, LOW);
+  //if (digitalRead(_DATA_REGUEST))
+  //      digitalWrite(LED_BUILTIN, HIGH);
+  //else  digitalWrite(LED_BUILTIN, LOW);
 
     //-- FS selected, but no file to use 
     if (!strcmp(actDSMR, "FS") && strlen(telegramFileName) == 0)
@@ -859,7 +872,6 @@ void loop()
         while(!P1_OUT) { delay(10); }
         P1_OUT.swap();
         Debugln("P1_OUT.begin(9600, SERIAL_7E1)");
-        //Serial.begin(9600);
         delay(200);
       }
       else if (String(actDSMR) == "42")
@@ -915,14 +927,22 @@ void loop()
     }
 
   //-- not running, so nothing to do
+  if (runStatus)  oledPrintMsg(1, "Status: Running", 0);
+  else            oledPrintMsg(1, "Status: Stopped", 0);
   if (runStatus == 0) return; 
 
   if (digitalRead(_DATA_REGUEST) || ignoreDTR)
   {
-    digitalWrite(LED_BUILTIN, LOW);
+    if (millis() > DtrTimer)
+    {
+      //-- inversed (On)
+      digitalWrite(LED_BUILTIN, LOW); 
+      DtrTimer = millis() + 400;
+    }
   }
   else
   {
+    //-- inversed (Off)
     digitalWrite(LED_BUILTIN, HIGH);
     return;
   }
@@ -1048,7 +1068,12 @@ void loop()
 
   if (millis()+_SHOW_BTN_TIME > showBtnTimer)
   {
-    oledPrintMsg(1, "                       ", 10);
+    //oledPrintMsg(1, "                       ", 10);
+  }
+  //-- time to remove last reset message
+  if (telegramCount > 10)
+  {
+    lastReset = "                           ";
   }
   sprintf(cMsg, "Send: %8u", telegramCount);
   oledPrintMsg(3, cMsg, 10);

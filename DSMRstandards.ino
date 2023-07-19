@@ -207,24 +207,6 @@ int16_t buildTelegram42(int16_t line, char telegramLine[])
     telegramPos = 0;
   }
 
-/***************
-  if (line < maxLines42)
-  {
-    P1_OUT.print(telegramLine); // <<<<---- nooit weghalen!!!!
-    snprintf(&telegram[telegramPos], _MAX_TELEGRAM_LEN, telegramLine);
-    telegramPos += strlen(telegramLine);
-    if (Verbose && ((telegramCount % 3) == 0))
-    {
-      if (line == 0)
-      {
-        Debugln();
-      }
-      Debug(telegramLine);
-    }
-    //else if (line = 3) Debug(telegramLine);
-  }
-***********/
-
   if (line <= maxLines42)
   {
     if (Verbose && ((telegramCount % 3) == 0))
@@ -740,7 +722,7 @@ int16_t buildTelegram30(int16_t line, char telegramLine[])
       sprintf(telegramLine, "\r\n");
       break;
     case 2:
-      sprintf(telegramLine, "0-0:96.1.1(4530303336303000000000000000000000)\r\n", val);
+      sprintf(telegramLine, "0-0:96.1.1(4530303336303000000000000000000000)\r\n");
       break;
     case 3:   // Energy Delivered
       sprintf(telegramLine, "1-0:1.8.1(%s*kWh)\r\n", Format(ED_T1, 10, 3).c_str());
@@ -769,19 +751,19 @@ int16_t buildTelegram30(int16_t line, char telegramLine[])
               break;
     *******/
     case 10:  // Switch position (?)
-      sprintf(telegramLine, "0-0:96.3.10(1)\r\n", val);
+      sprintf(telegramLine, "0-0:96.3.10(1)\r\n");
       break;
     case 11:  // Text message code
-      sprintf(telegramLine, "0-0:96.13.1()\r\n", val);
+      sprintf(telegramLine, "0-0:96.13.1()\r\n");
       break;
     case 12:  // Text message text
-      sprintf(telegramLine, "0-0:96.13.0()\r\n", val);
+      sprintf(telegramLine, "0-0:96.13.0()\r\n");
       break;
     case 13:  // Gas Device-Type
-      sprintf(telegramLine, "0-%d:24.1.0(3)\r\n", actGasMBus, val);
+      sprintf(telegramLine, "0-%d:24.1.0(3)\r\n", actGasMBus);
       break;
     case 14:  // Equipment identifier (Gas)
-      sprintf(telegramLine, "0-%d:96.1.0(4730303339303031363500000000000000)\r\n", actGasMBus, val);
+      sprintf(telegramLine, "0-%d:96.1.0(4730303339303031363500000000000000)\r\n", actGasMBus);
       break;
     case 15:  // Last 5-minute value (temperature converted), gas delivered to client
       // in m3, including decimal values and capture time
@@ -796,10 +778,10 @@ int16_t buildTelegram30(int16_t line, char telegramLine[])
       sprintf(telegramLine, "0-%d:24.4.0(1)\r\n", actGasMBus, val);
       break;
     case 18:  // meter Device-Type (4)
-      sprintf(telegramLine, "0-4:24.1.0(005)\r\n", val);
+      sprintf(telegramLine, "0-4:24.1.0(005)\r\n");
       break;
     case 19:  // Equipment identifier (4)
-      sprintf(telegramLine, "0-4:96.1.0(4730303339303031363500004444444444)\r\n", val);
+      sprintf(telegramLine, "0-4:96.1.0(4730303339303031363500004444444444)\r\n");
       break;
     case 20:  // value (temperature converted), (4)
       sprintf(telegramLine, "0-4:24.3.0(%02d%02d%02d%02d%02d00)(08)(60)(1)(0-4:24.2.1)(m3)\r\n"
@@ -809,10 +791,10 @@ int16_t buildTelegram30(int16_t line, char telegramLine[])
       sprintf(telegramLine, "(%s)\r\n", Format((GDelivered/3), 9, 3).c_str());
       break;
     case 22:  // valve position (4)
-      sprintf(telegramLine, "0-4:24.4.0(1)\r\n", val);
+      sprintf(telegramLine, "0-4:24.4.0(1)\r\n");
       break;
     case 23:
-      sprintf(telegramLine, "!\0\0\0");     // just for documentation
+      sprintf(telegramLine, "!\r\n\0\0\0");     
       break;
 
   } // switch(line)
